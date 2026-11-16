@@ -35,6 +35,7 @@ defmodule Fleetms.Integrations.SharePoint.ConfigTest do
       "FLEET_DATA_ADAPTER" => "sharepoint",
       "MICROSOFT_TENANT_ID" => "tenant",
       "MICROSOFT_CLIENT_ID" => "client",
+      "MICROSOFT_CLIENT_SECRET" => "secret",
       "SHAREPOINT_SITE_ID" => "site",
       "SHAREPOINT_DRIVE_ID" => "drive"
     }
