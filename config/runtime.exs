@@ -45,6 +45,14 @@ end
 #   app_domain: env!("PHX_HOST", :string, "example.com")
 
 if config_env() == :prod do
+  sharepoint_settings =
+    case Fleetms.Integrations.SharePoint.Config.load(&System.get_env/1, :prod) do
+      {:ok, settings} -> settings
+      {:error, reason} -> raise "Fleet data adapter configuration error: #{reason}"
+    end
+
+  config :fleetms, :fleet_data_adapter, sharepoint_settings
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
