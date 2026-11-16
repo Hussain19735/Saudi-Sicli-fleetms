@@ -1,0 +1,2 @@
+ProjectCode,ProjectName,ClientName,CityCode,ProjectManager,StartDate,EndDate,Status,IsActive
+PRJ-001,Example project,Example client,JED,,2026-01-01,,Active,TRUE
