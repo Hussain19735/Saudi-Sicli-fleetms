@@ -745,3 +745,47 @@ button, a, input, select, textarea { transition: background-color .18s ease, bor
   .fleet-dashboard-heading::after { opacity: .55; }
   .fleet-dashboard-meta { align-self: flex-start; white-space: normal; }
 }
+
+
+/* Sidebar inner surfaces: align nested Phoenix component containers with brand. */
+#sidebar > div,
+#sidebar > div > div,
+#sidebar .bg-white,
+#sidebar .divide-gray-200 {
+  background-color: #102b46 !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
+#sidebar a,
+#sidebar button {
+  color: rgba(238,244,250,.82);
+}
+#sidebar a i,
+#sidebar button i {
+  color: #c7a45b;
+}
+#sidebar a:hover,
+#sidebar button:hover {
+  color: #fff;
+  background: rgba(255,255,255,.085);
+}
+#sidebar a.text-primary-600,
+#sidebar button.text-primary-600,
+#sidebar a.bg-primary-50,
+#sidebar button.bg-primary-50 {
+  color: #fff !important;
+  background: rgba(199,164,91,.18) !important;
+  box-shadow: inset 3px 0 0 #c7a45b;
+}
+#sidebar input {
+  color: #f4f7fa;
+  background: #173d5f;
+  border-color: rgba(255,255,255,.16);
+}
+#sidebar input::placeholder { color: #b6c4d1; }
+.dark #sidebar > div,
+.dark #sidebar > div > div,
+.dark #sidebar .bg-white,
+.dark #sidebar .divide-gray-200 {
+  background-color: #091a2b !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
