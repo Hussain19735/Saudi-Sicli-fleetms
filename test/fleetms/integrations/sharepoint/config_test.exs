@@ -37,7 +37,19 @@ defmodule Fleetms.Integrations.SharePoint.ConfigTest do
       "MICROSOFT_CLIENT_ID" => "client",
       "MICROSOFT_CLIENT_SECRET" => "secret",
       "SHAREPOINT_SITE_ID" => "site",
-      "SHAREPOINT_DRIVE_ID" => "drive"
+      "SHAREPOINT_DRIVE_ID" => "drive",
+      "SHAREPOINT_LIST_CITIES_ID" => "cities",
+      "SHAREPOINT_LIST_PROJECTS_ID" => "projects",
+      "SHAREPOINT_LIST_WORKSHOPS_ID" => "workshops",
+      "SHAREPOINT_LIST_DRIVERS_ID" => "drivers",
+      "SHAREPOINT_LIST_VEHICLES_ID" => "vehicles",
+      "SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID" => "assignments",
+      "SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID" => "reports",
+      "SHAREPOINT_LIST_WORK_ORDERS_ID" => "orders",
+      "SHAREPOINT_LIST_INVOICES_ID" => "invoices",
+      "SHAREPOINT_LIST_APPROVAL_RECORDS_ID" => "approvals",
+      "SHAREPOINT_LIST_VEHICLE_HISTORY_ID" => "history",
+      "SHAREPOINT_LIST_AUDIT_LOG_ID" => "audit"
     }
 
     assert {:ok, settings} = Config.load(env(values), :prod)
