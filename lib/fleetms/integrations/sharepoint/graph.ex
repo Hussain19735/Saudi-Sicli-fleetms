@@ -44,7 +44,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
           {:ok, [map()]} | graph_error()
   def list_items(settings, list_id, opts \\ []) do
     query = Keyword.get(opts, :query, "$expand=fields")
-    url = "#{@graph_base}/sites/#{settings.site_id}/lists/#{list_id}/items?#{query}"
+    url = "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items?#{query}"
 
     with {:ok, token} <- access_token(settings),
          {:ok, response} <- graph_get(url, token) do
@@ -55,7 +55,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
   @spec create_item(Config.settings(), String.t(), map()) ::
           {:ok, map()} | graph_error()
   def create_item(settings, list_id, fields) when is_map(fields) do
-    url = "#{@graph_base}/sites/#{settings.site_id}/lists/#{list_id}/items"
+    url = "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items"
 
     with {:ok, token} <- access_token(settings),
          {:ok, %Req.Response{status: status, body: body}} <-
@@ -78,7 +78,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
   def update_item_fields(settings, list_id, item_id, fields, etag \\ nil)
       when is_map(fields) do
     url =
-      "#{@graph_base}/sites/#{settings.site_id}/lists/#{list_id}/items/#{item_id}/fields"
+      "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items/#{segment(item_id)}/fields"
 
     with {:ok, token} <- access_token(settings),
          {:ok, %Req.Response{status: status}} <-
@@ -100,9 +100,15 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
           {:ok, map()} | graph_error()
   def upload_document(settings, filename, content_type, binary, parent_path \\ "")
       when is_binary(binary) do
-    safe_name = URI.encode(filename, &URI.char_unreserved?/1)
-    path = [parent_path, safe_name] |> Enum.reject(&(&1 == "")) |> Enum.join("/")
-    url = "#{@graph_base}/drives/#{settings.drive_id}/root:/#{path}:/content"
+    safe_name = segment(filename)
+    safe_parent =
+      parent_path
+      |> String.split("/", trim: true)
+      |> Enum.map(&segment/1)
+      |> Enum.join("/")
+
+    path = [safe_parent, safe_name] |> Enum.reject(&(&1 == "")) |> Enum.join("/")
+    url = "#{@graph_base}/drives/#{segment(settings.drive_id)}/root:/#{path}:/content"
 
     with {:ok, token} <- access_token(settings),
          {:ok, %Req.Response{status: status, body: body}} <-
@@ -134,22 +140,39 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
   end
 
   defp collect_pages(%Req.Response{body: %{"value" => items} = body}, token, acc) do
-    next = body["@odata.nextLink"]
-
-    case next do
+    case body["@odata.nextLink"] do
       nil ->
         {:ok, Enum.reverse(acc) ++ items}
 
-      url ->
-        with {:ok, response} <- graph_get(url, token) do
-          collect_pages(response, token, Enum.reverse(items, acc))
+      url when is_binary(url) ->
+        if graph_url?(url) do
+          with {:ok, response} <- graph_get(url, token) do
+            collect_pages(response, token, Enum.reverse(items, acc))
+          end
+        else
+          {:error, {:graph_request_failed, :invalid_pagination_url}}
         end
+
+      _other ->
+        {:error, {:graph_request_failed, :invalid_response}}
     end
   end
 
   defp collect_pages(_response, _token, _acc),
     do: {:error, {:graph_request_failed, :invalid_response}}
 
+  defp graph_url?(url) do
+    case URI.parse(url) do
+      %URI{scheme: "https", host: "graph.microsoft.com"} -> true
+      _ -> false
+    end
+  end
+
+  defp segment(value) when is_binary(value),
+    do: URI.encode(value, &URI.char_unreserved?/1)
+
+  defp segment(_value), do: ""
+  
   defp auth_headers(token, etag \\ nil) do
     base = [{"authorization", "Bearer " <> token}, {"accept", "application/json"}]
     if is_binary(etag), do: base ++ [{"if-match", etag}], else: base
