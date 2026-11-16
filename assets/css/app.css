@@ -504,3 +504,145 @@
 	@apply cursor-default block;
 	padding: 6px;
 }
+
+/* ==========================================================
+   Saudi Sicli Fleet UI — Corporate visual refresh
+   Keeps Phoenix LiveView markup and existing component hooks.
+   ========================================================== */
+:root {
+  --sicli-navy: #102b46;
+  --sicli-navy-2: #173d5f;
+  --sicli-gold: #c7a45b;
+  --sicli-gold-soft: #f5efdf;
+  --sicli-canvas: #f4f6f9;
+  --sicli-border: #e3e8ef;
+  --sicli-text: #172b3d;
+  --sicli-muted: #68798a;
+}
+
+html { scroll-behavior: smooth; }
+body { color: var(--sicli-text); background: var(--sicli-canvas); }
+button, a, input, select, textarea { transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease; }
+
+#navbar {
+  min-height: 68px;
+  background: rgba(255,255,255,.96);
+  border-color: var(--sicli-border);
+  box-shadow: 0 2px 14px rgba(16,43,70,.045);
+  backdrop-filter: blur(14px);
+}
+#navbar button:hover { color: var(--sicli-navy); }
+#navbar #toggleSidebar { border-radius: 12px; }
+#sidebar {
+  background: #102b46;
+  border-inline-end: 1px solid rgba(255,255,255,.08);
+  box-shadow: 8px 0 28px rgba(16,43,70,.08);
+}
+#sidebar a { border-radius: 10px; margin: 2px 10px; }
+#sidebar a:hover { background: rgba(255,255,255,.09); }
+#sidebar a[aria-current="page"], #sidebar a.active {
+  color: #fff;
+  background: rgba(199,164,91,.18);
+  box-shadow: inset 3px 0 0 var(--sicli-gold);
+}
+#sidebar svg { opacity: .92; }
+
+#main-content {
+  background: var(--sicli-canvas);
+  min-height: calc(100vh - 4rem);
+}
+#main-content main { min-height: calc(100vh - 4rem); }
+#main-content main > .px-4.pt-6 {
+  max-width: 1680px;
+  margin-inline: auto;
+  padding: 1.5rem clamp(1rem, 2vw, 2rem) 2rem;
+}
+#main-content .bg-white.rounded-lg,
+#main-content .bg-white.border,
+#main-content .dark\\:bg-gray-800 {
+  border-color: var(--sicli-border);
+}
+#main-content .rounded-lg.shadow,
+#main-content .rounded-lg.shadow-sm {
+  border: 1px solid var(--sicli-border);
+  border-radius: 16px;
+  box-shadow: 0 5px 20px rgba(16,43,70,.045);
+}
+#main-content .rounded-lg.shadow:hover,
+#main-content .rounded-lg.shadow-sm:hover {
+  box-shadow: 0 9px 26px rgba(16,43,70,.075);
+}
+#main-content h1, #main-content h2, #main-content h3,
+#main-content h4, #main-content h5 {
+  letter-spacing: -.015em;
+}
+#main-content .text-primary-600,
+#main-content .text-primary-700,
+#main-content .text-primary-500 { color: var(--sicli-navy-2); }
+#main-content .bg-primary-600,
+#main-content .bg-primary-700 { background-color: var(--sicli-navy); }
+#main-content .border-primary-600,
+#main-content .border-primary-700 { border-color: var(--sicli-gold); }
+#main-content button:focus-visible,
+#main-content a:focus-visible,
+#navbar button:focus-visible,
+#sidebar a:focus-visible {
+  outline: 3px solid rgba(199,164,91,.55);
+  outline-offset: 2px;
+}
+#main-content input, #main-content select, #main-content textarea {
+  min-height: 42px;
+  border-radius: 10px;
+}
+#main-content table thead th {
+  color: var(--sicli-navy);
+  font-weight: 700;
+  letter-spacing: .025em;
+}
+#main-content table tbody tr:hover { background: rgba(199,164,91,.055); }
+#main-content .apexcharts-canvas { margin-inline: auto; }
+
+/* Dark appearance — navy surfaces with restrained gold highlights. */
+.dark body, html.dark body { background: #0b1724; color: #e7edf4; }
+.dark #navbar {
+  background: rgba(13,30,47,.96);
+  border-color: #23384d;
+  box-shadow: 0 2px 18px rgba(0,0,0,.18);
+}
+.dark #sidebar { background: #091a2b; border-color: #1e3449; }
+.dark #main-content { background: #0b1724; }
+.dark #main-content .rounded-lg.shadow,
+.dark #main-content .rounded-lg.shadow-sm {
+  border-color: #263b50;
+  box-shadow: 0 6px 22px rgba(0,0,0,.16);
+}
+.dark #main-content .text-primary-600,
+.dark #main-content .text-primary-700,
+.dark #main-content .text-primary-500 { color: #d7bd83; }
+.dark #main-content .bg-primary-600,
+.dark #main-content .bg-primary-700 { background-color: #244866; }
+.dark #main-content table thead th { color: #e5d4ad; }
+.dark #main-content table tbody tr:hover { background: rgba(199,164,91,.08); }
+.dark #main-content input,
+.dark #main-content select,
+.dark #main-content textarea {
+  background-color: #14283b;
+  border-color: #344a60;
+  color: #e7edf4;
+}
+
+/* Mobile: comfortable touch targets and no horizontal page overflow. */
+@media (max-width: 1023px) {
+  #main-content { margin-inline: 0 !important; }
+  #main-content main > .px-4.pt-6 { padding: 1rem .875rem 1.5rem; }
+  #main-content .grid { min-width: 0; }
+  #main-content .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  #main-content button, #main-content a, #navbar button { min-height: 42px; }
+  #sidebar { z-index: 45; }
+}
+@media (max-width: 640px) {
+  #main-content .rounded-lg.shadow,
+  #main-content .rounded-lg.shadow-sm { border-radius: 13px; }
+  #main-content .text-2xl { font-size: 1.2rem; line-height: 1.7rem; }
+  #main-content table { min-width: 620px; }
+}
