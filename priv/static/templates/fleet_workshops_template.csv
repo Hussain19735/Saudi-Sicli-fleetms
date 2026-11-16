@@ -1,0 +1,2 @@
+WorkshopCode,WorkshopName,WorkshopType,CityCode,Address,ContactName,Mobile,Email,VATNumber,CommercialRegistration,ApprovalStatus,PaymentTerms,WarrantyTerms,RelationshipStartDate,IsActive
+WS-001,Example workshop,General,JED,,,,,,,Pending,,,,TRUE
