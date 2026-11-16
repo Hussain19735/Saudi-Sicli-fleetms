@@ -67,6 +67,13 @@ window.addEventListener("phx:page-loading-stop", _info => {
 // window.document.addEventListener("phx:page-loading-stop", _info => console.log("Loaded"))
 
 
+
+document.addEventListener("click", (event) => {
+  const printButton = event.target.closest("[data-print-page]");
+  if (!printButton) return;
+  window.print();
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
