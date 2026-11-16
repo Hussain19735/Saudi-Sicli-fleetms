@@ -10,6 +10,7 @@ defmodule Fleetms.Integrations.SharePoint.Config do
   @required_sharepoint_keys ~w(
     MICROSOFT_TENANT_ID
     MICROSOFT_CLIENT_ID
+    MICROSOFT_CLIENT_SECRET
     SHAREPOINT_SITE_ID
     SHAREPOINT_DRIVE_ID
   )
@@ -18,6 +19,7 @@ defmodule Fleetms.Integrations.SharePoint.Config do
           adapter: :sharepoint | :demo,
           tenant_id: String.t() | nil,
           client_id: String.t() | nil,
+          client_secret: String.t() | nil,
           site_id: String.t() | nil,
           drive_id: String.t() | nil
         }
@@ -63,6 +65,7 @@ defmodule Fleetms.Integrations.SharePoint.Config do
            adapter: :sharepoint,
            tenant_id: values["MICROSOFT_TENANT_ID"],
            client_id: values["MICROSOFT_CLIENT_ID"],
+           client_secret: values["MICROSOFT_CLIENT_SECRET"],
            site_id: values["SHAREPOINT_SITE_ID"],
            drive_id: values["SHAREPOINT_DRIVE_ID"]
          }}
@@ -77,6 +80,7 @@ defmodule Fleetms.Integrations.SharePoint.Config do
       adapter: adapter,
       tenant_id: nil,
       client_id: nil,
+      client_secret: nil,
       site_id: nil,
       drive_id: nil
     }
