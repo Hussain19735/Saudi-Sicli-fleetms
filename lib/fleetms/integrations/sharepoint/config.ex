@@ -22,9 +22,10 @@ defmodule Fleetms.Integrations.SharePoint.Config do
           drive_id: String.t() | nil
         }
 
-  @spec load(map(), atom()) :: {:ok, settings()} | {:error, String.t()}
-  def load(env \\ System, runtime_env \\ :prod) do
-    adapter = env.get_env("FLEET_DATA_ADAPTER")
+  @spec load((String.t() -> String.t() | nil), atom()) ::
+          {:ok, settings()} | {:error, String.t()}
+  def load(get_env \\ &System.get_env/1, runtime_env \\ :prod) do
+    adapter = get_env.("FLEET_DATA_ADAPTER")
 
     case {adapter, runtime_env} do
       {"demo", :prod} ->
@@ -34,7 +35,7 @@ defmodule Fleetms.Integrations.SharePoint.Config do
         {:ok, empty_settings(:demo)}
 
       {"sharepoint", _} ->
-        load_sharepoint(env)
+        load_sharepoint(get_env)
 
       {nil, :prod} ->
         {:error, "FLEET_DATA_ADAPTER must be explicitly set in production"}
@@ -47,8 +48,8 @@ defmodule Fleetms.Integrations.SharePoint.Config do
     end
   end
 
-  defp load_sharepoint(env) do
-    values = Map.new(@required_sharepoint_keys, fn key -> {key, env.get_env(key)} end)
+  defp load_sharepoint(get_env) do
+    values = Map.new(@required_sharepoint_keys, fn key -> {key, get_env.(key)} end)
 
     missing =
       values
