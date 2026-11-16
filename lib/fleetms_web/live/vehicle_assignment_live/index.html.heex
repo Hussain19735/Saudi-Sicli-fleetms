@@ -14,7 +14,7 @@
         >
           <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z" />
         </svg>
-        Home
+        الرئيسية
       </a>
     </li>
     <li aria-current="page">
@@ -35,7 +35,7 @@
           />
         </svg>
         <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
-          Vehicles Assignments
+          إسناد المركبات
         </span>
       </div>
     </li>
@@ -49,8 +49,8 @@
         <div class="flex items-center justify-between space-x-4 pt-3">
           <div class="flex-1 flex flex-wrap items-center gap-3">
             <div>
-              <h5 class="dark:text-white font-semibold">Vehicle Assignments</h5>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Track vehicle allocation periods and assignment status</p>
+              <h5 class="dark:text-white font-semibold">إسناد المركبات</h5>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">متابعة فترات إسناد المركبات وحالتها</p>
             </div>
             <span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
               <%= @total %> assignments
@@ -64,7 +64,7 @@
                 for="vehicle_search_search_query"
                 class="text-sm font-medium text-gray-900 sr-only dark:text-white"
               >
-                Search
+                بحث
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -91,13 +91,13 @@
                   class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                   phx-debounce="700"
                   value={@search_params.search_query}
-                  placeholder="Search vehicle..."
+                  placeholder="بحث vehicle..."
                 />
                 <button
                   type="submit"
                   class="text-white absolute right-0 bottom-0 top-0 bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-r-lg text-sm px-4 py-2 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
-                  Search
+                  بحث
                 </button>
               </div>
             </form>
@@ -207,7 +207,7 @@
                 >
                   <div>
                     <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-                      Vehicle Assignments Sort Order
+                      إسناد المركبات Sort Order
                     </h6>
                     <ul
                       class="space-y-2 text-sm"
@@ -263,7 +263,7 @@
                 >
                   <div>
                     <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-                      Sort Vehicle Assignments by
+                      Sort إسناد المركبات by
                     </h6>
                     <ul class="space-y-2 text-sm" aria-labelledby="sort-by-select-dropdownButton">
                       <li :for={{label, value} <- get_sort_by_opts()} class="flex items-center">
