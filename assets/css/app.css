@@ -944,3 +944,33 @@ button, a, input, select, textarea { transition: background-color .18s ease, bor
     gap: .5rem;
   }
 }
+
+
+/* Saudi Sicli: print-ready reports and browser PDF export */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  html, body { background: #fff !important; color: #111827 !important; }
+  body { font-size: 10pt !important; }
+  nav, aside, footer, #sidebarBackdrop, [data-print-hide],
+  .fleet-print-toolbar, .phx-loading, .live-toast, .toast-container {
+    display: none !important;
+  }
+  #outer-container, #main-content, #main-content main {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  #main-content main > * { break-inside: auto; }
+  table { width: 100% !important; border-collapse: collapse !important; }
+  thead { display: table-header-group; }
+  tr, img, .rounded-lg, .shadow, .shadow-sm { break-inside: avoid; }
+  th, td { border: 1px solid #d1d5db !important; padding: 6px !important; color: #111827 !important; }
+  a { color: #111827 !important; text-decoration: none !important; }
+  .dark, .dark * { color: #111827 !important; background-color: #fff !important; }
+}
