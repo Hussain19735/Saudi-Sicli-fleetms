@@ -13,6 +13,18 @@ defmodule Fleetms.Integrations.SharePoint.Config do
     MICROSOFT_CLIENT_SECRET
     SHAREPOINT_SITE_ID
     SHAREPOINT_DRIVE_ID
+    SHAREPOINT_LIST_CITIES_ID
+    SHAREPOINT_LIST_PROJECTS_ID
+    SHAREPOINT_LIST_WORKSHOPS_ID
+    SHAREPOINT_LIST_DRIVERS_ID
+    SHAREPOINT_LIST_VEHICLES_ID
+    SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID
+    SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID
+    SHAREPOINT_LIST_WORK_ORDERS_ID
+    SHAREPOINT_LIST_INVOICES_ID
+    SHAREPOINT_LIST_APPROVAL_RECORDS_ID
+    SHAREPOINT_LIST_VEHICLE_HISTORY_ID
+    SHAREPOINT_LIST_AUDIT_LOG_ID
   )
 
   @type settings :: %{
@@ -21,7 +33,8 @@ defmodule Fleetms.Integrations.SharePoint.Config do
           client_id: String.t() | nil,
           client_secret: String.t() | nil,
           site_id: String.t() | nil,
-          drive_id: String.t() | nil
+          drive_id: String.t() | nil,
+          list_ids: map()
         }
 
   @spec load((String.t() -> String.t() | nil), atom()) ::
@@ -67,7 +80,21 @@ defmodule Fleetms.Integrations.SharePoint.Config do
            client_id: values["MICROSOFT_CLIENT_ID"],
            client_secret: values["MICROSOFT_CLIENT_SECRET"],
            site_id: values["SHAREPOINT_SITE_ID"],
-           drive_id: values["SHAREPOINT_DRIVE_ID"]
+           drive_id: values["SHAREPOINT_DRIVE_ID"],
+           list_ids: %{
+             cities: values["SHAREPOINT_LIST_CITIES_ID"],
+             projects: values["SHAREPOINT_LIST_PROJECTS_ID"],
+             workshops: values["SHAREPOINT_LIST_WORKSHOPS_ID"],
+             drivers: values["SHAREPOINT_LIST_DRIVERS_ID"],
+             vehicles: values["SHAREPOINT_LIST_VEHICLES_ID"],
+             vehicle_assignments: values["SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID"],
+             breakdown_reports: values["SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID"],
+             work_orders: values["SHAREPOINT_LIST_WORK_ORDERS_ID"],
+             invoices: values["SHAREPOINT_LIST_INVOICES_ID"],
+             approval_records: values["SHAREPOINT_LIST_APPROVAL_RECORDS_ID"],
+             vehicle_history: values["SHAREPOINT_LIST_VEHICLE_HISTORY_ID"],
+             audit_log: values["SHAREPOINT_LIST_AUDIT_LOG_ID"]
+           }
          }}
 
       keys ->
@@ -82,7 +109,8 @@ defmodule Fleetms.Integrations.SharePoint.Config do
       client_id: nil,
       client_secret: nil,
       site_id: nil,
-      drive_id: nil
+      drive_id: nil,
+      list_ids: %{}
     }
   end
 end
