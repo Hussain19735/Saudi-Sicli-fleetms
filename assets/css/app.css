@@ -859,3 +859,88 @@ button, a, input, select, textarea { transition: background-color .18s ease, bor
   #main-content section.bg-gray-50 > div > div.bg-white { border-radius: 12px; }
   #main-content section.bg-gray-50 > div > div.bg-white > div { margin-inline: .75rem; }
 }
+
+
+/* Vehicle profile and edit/create form refinement. */
+#main-content #vehicle-form {
+  padding: 1.25rem;
+  border: 1px solid var(--sicli-border);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(16,43,70,.045);
+}
+#main-content #vehicle-form label {
+  color: #34485d;
+  font-weight: 650;
+}
+#main-content #vehicle-form input,
+#main-content #vehicle-form select,
+#main-content #vehicle-form textarea {
+  width: 100%;
+  border-color: #d6dee7;
+  background-color: #f9fbfd;
+}
+#main-content #vehicle-form input:focus,
+#main-content #vehicle-form select:focus,
+#main-content #vehicle-form textarea:focus {
+  border-color: var(--sicli-gold);
+  box-shadow: 0 0 0 3px rgba(199,164,91,.14);
+}
+#main-content #vehicle-form .text-lg,
+#main-content #vehicle-form .text-xl {
+  color: var(--sicli-navy);
+}
+#main-content section.mx-2 > .flex.justify-between {
+  align-items: center;
+  gap: 1rem;
+  padding: .85rem;
+  border: 1px solid var(--sicli-border);
+  border-radius: 15px;
+  background: linear-gradient(110deg,#fff 0%,#f8fafc 78%,#f4efe3 100%);
+}
+#main-content section.mx-2 > .grid > div {
+  border: 1px solid var(--sicli-border);
+  border-radius: 14px;
+  box-shadow: 0 7px 22px rgba(16,43,70,.045);
+}
+#main-content section.mx-2 [role="tablist"] {
+  border-color: var(--sicli-border);
+}
+#main-content section.mx-2 [role="tab"] {
+  font-weight: 650;
+  transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+}
+.dark #main-content #vehicle-form {
+  background: #102337;
+  border-color: #263b50;
+}
+.dark #main-content #vehicle-form label { color: #d7e0e9; }
+.dark #main-content #vehicle-form input,
+.dark #main-content #vehicle-form select,
+.dark #main-content #vehicle-form textarea {
+  background: #14283b;
+  border-color: #344a60;
+  color: #e7edf4;
+}
+.dark #main-content #vehicle-form .text-lg,
+.dark #main-content #vehicle-form .text-xl { color: #e7edf4; }
+.dark #main-content section.mx-2 > .flex.justify-between {
+  border-color: #263b50;
+  background: linear-gradient(110deg,#12283c 0%,#102337 78%,#292a27 100%);
+}
+.dark #main-content section.mx-2 > .grid > div {
+  border-color: #263b50;
+  background: #102337;
+}
+@media (max-width: 640px) {
+  #main-content #vehicle-form { padding: .85rem; }
+  #main-content section.mx-2 > .flex.justify-between {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  #main-content section.mx-2 > .flex.justify-between > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+}
