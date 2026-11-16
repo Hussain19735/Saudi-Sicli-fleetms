@@ -96,7 +96,7 @@ config :ex_cldr,
   default_backend: Fleetms.Cldr
 
 config :ex_money,
-  default_currency: :ZMW
+  default_currency: :SAR
 
 config :fun_with_flags, :persistence,
   adapter: FunWithFlags.Store.Persistent.Ecto,
