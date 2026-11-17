@@ -35,4 +35,28 @@ defmodule Fleetms.Integrations.WhatsApp.VehicleExpiryReminderTest do
     assert {:ok, "+14155552671"} = VehicleExpiryReminder.normalize_phone("+14155552671")
     assert {:error, :invalid_phone} = VehicleExpiryReminder.normalize_phone("12345")
   end
+  test "builds five body parameters for the approved template" do
+    vehicle = %{name: "Fleet 12", license_plate: "ABC 1234"}
+
+    reminder = %{
+      expiry_date: ~D[2026-12-17],
+      days_before: 30,
+      arabic_label: "انتهاء استمارة المركبة",
+      english_label: "Vehicle registration"
+    }
+
+    assert [
+             %{
+               type: "body",
+               parameters: [
+                 %{type: "text", text: "Fleet 12 - ABC 1234"},
+                 %{type: "text", text: "انتهاء استمارة المركبة"},
+                 %{type: "text", text: "2026-12-17"},
+                 %{type: "text", text: "30"},
+                 %{type: "text", text: "يرجى التجديد قبل تاريخ الانتهاء"}
+               ]
+             }
+           ] = VehicleExpiryReminder.template_components(vehicle, reminder, "ar")
+  end
+
 end
