@@ -109,6 +109,9 @@ defmodule Fleetms.Integrations.SharePoint.Service do
          true <- Decimal.compare(Decimal.add(amount, vat), total) == :eq do
       {:ok,
        fields
+       |> Map.delete("amount")
+       |> Map.delete("vat_amount")
+       |> Map.delete("total_amount")
        |> Map.delete("paid_amount")
        |> Map.delete("remaining_amount")
        |> Map.delete("payment_status")
@@ -116,6 +119,9 @@ defmodule Fleetms.Integrations.SharePoint.Service do
        |> Map.delete("paid_at")
        |> Map.delete("paid_by")
        |> Map.delete("paid_by_role")
+       |> Map.put("Amount", Decimal.to_float(amount))
+       |> Map.put("VATAmount", Decimal.to_float(vat))
+       |> Map.put("TotalAmount", Decimal.to_float(total))
        |> Map.put("PaidAmount", 0.0)
        |> Map.put("RemainingAmount", Decimal.to_float(total))
        |> Map.put("PaymentStatus", "Unpaid")
