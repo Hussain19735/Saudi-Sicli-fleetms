@@ -200,6 +200,9 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert scoped_fields["ProjectId"] == "P-1"
     assert scoped_fields["CityId"] == "JED"
     assert scoped_fields["VehicleId"] == "V-1"
+    refute Map.has_key?(scoped_fields, "project_id")
+    refute Map.has_key?(scoped_fields, "city_id")
+    refute Map.has_key?(scoped_fields, "vehicle_id")
   end
 
   test "create rejects caller-supplied scope that conflicts with trusted target" do
