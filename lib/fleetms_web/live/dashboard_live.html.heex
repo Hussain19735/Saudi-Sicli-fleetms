@@ -396,7 +396,7 @@
     </div>
 
     <div
-      :if={FeatureFlags.Vehicleتحت الصيانة.module_enabled?(@current_user.organization)}
+      :if={FeatureFlags.VehicleMaintenance.module_enabled?(@current_user.organization)}
       class="w-full md:col-span-6 bg-white rounded-lg shadow dark:bg-gray-800 p-4 md:p-6"
     >
       <div class="flex justify-between mb-3">
@@ -617,7 +617,7 @@
   </div>
 
   <div
-    :if={FeatureFlags.Vehicleتحت الصيانة.module_enabled?(@current_user.organization)}
+    :if={FeatureFlags.VehicleMaintenance.module_enabled?(@current_user.organization)}
     class="grid gap-2 grid-cols-12 mt-2"
   >
     <div
