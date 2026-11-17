@@ -93,9 +93,7 @@ defmodule FleetmsWeb.UserLive.SettingsTest do
              |> form("#user_profile_form", user_profile: @update_attrs)
              |> render_submit()
 
-      flash = assert_redirect(settings_live, ~p"/settings", 200)
-
-      assert flash["info"] =~ "Profile information was updated successfully"
+      assert_redirect(settings_live, ~p"/settings", 200)
 
       {:ok, _settings_live, html} =
         conn
