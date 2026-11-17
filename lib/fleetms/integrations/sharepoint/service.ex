@@ -27,8 +27,10 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       when is_map(fields) and is_map(trusted_target) do
     with {:ok, approval_action} <- approval_action(fields),
          :ok <- authorize(actor, approval_action, trusted_target),
-         :ok <- validate_create_scope(fields, trusted_target) do
-      Repository.create(settings, :approval_records, fields)
+         :ok <- validate_create_scope(fields, trusted_target),
+         :ok <- validate_approval_record(fields),
+         {:ok, audit_fields} <- approval_audit_fields(actor) do
+      Repository.create(settings, :approval_records, Map.merge(fields, audit_fields))
     end
   end
 
@@ -65,6 +67,45 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       Repository.list(settings, resource, opts)
     end
   end
+
+  defp validate_approval_record(fields) do
+    decision = get_field(fields, ["Decision", "decision"])
+    parent_record_id = get_field(fields, ["ParentRecordId", "parent_record_id"])
+    approved_amount = get_field(fields, ["ApprovedAmount", "approved_amount"])
+
+    cond do
+      decision not in ["Approved", "Rejected"] ->
+        {:error, :invalid_approval_decision}
+
+      not (is_binary(parent_record_id) and String.trim(parent_record_id) != "") ->
+        {:error, :parent_record_id_required}
+
+      not (is_number(approved_amount) and approved_amount >= 0) ->
+        {:error, :invalid_approved_amount}
+
+      true ->
+        :ok
+    end
+  end
+
+  # Audit identity and timestamp are always generated from the authenticated
+  # server actor; caller-supplied values cannot impersonate another approver.
+  defp approval_audit_fields(%{role: role} = actor) when is_atom(role) do
+    actor_id = Map.get(actor, :email) || Map.get(actor, :id)
+
+    if is_binary(actor_id) and String.trim(actor_id) != "" do
+      {:ok,
+       %{
+         "DecisionBy" => actor_id,
+         "DecisionByRole" => Atom.to_string(role),
+         "DecisionAt" => DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+       }}
+    else
+      {:error, :approval_actor_identity_required}
+    end
+  end
+
+  defp approval_audit_fields(_actor), do: {:error, :approval_actor_identity_required}
 
   defp approval_action(fields) do
     approval_type = get_field(fields, ["ApprovalType", "approval_type"])
