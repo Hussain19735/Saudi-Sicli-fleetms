@@ -7,7 +7,7 @@ defmodule Fleetms.Integrations.WhatsApp.Client do
   Callers must authorize and resolve recipients before invoking this module.
   """
 
-  @phone_pattern ~r/^\\+[1-9][0-9]{7,14}$/
+  @phone_pattern ~r/^\+[1-9][0-9]{7,14}$/
   @template_pattern ~r/^[a-z0-9_]{1,512}$/
   @language_pattern ~r/^[a-z]{2,3}(_[A-Z]{2})?$/
 
@@ -94,7 +94,7 @@ defmodule Fleetms.Integrations.WhatsApp.Client do
        }) do
     is_binary(token) and token != "" and
       is_binary(phone_number_id) and Regex.match?(~r/^[0-9]+$/, phone_number_id) and
-      is_binary(api_version) and Regex.match?(~r/^v[0-9]+\\.[0-9]+$/, api_version)
+      is_binary(api_version) and Regex.match?(~r/^v[0-9]+\.[0-9]+$/, api_version)
   end
 
   defp valid_settings?(_settings), do: false
