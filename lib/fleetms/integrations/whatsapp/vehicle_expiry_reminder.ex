@@ -4,9 +4,11 @@ defmodule Fleetms.Integrations.WhatsApp.VehicleExpiryReminder do
   """
 
   @documents [
-    {:registration, :registration_expiry_date, "انتهاء استمارة المركبة", "Vehicle registration"},
+    {:registration, :registration_expiry_date, "انتهاء استمارة المركبة",
+     "Vehicle registration"},
     {:insurance, :insurance_expiry_date, "انتهاء تأمين المركبة", "Vehicle insurance"},
-    {:periodic_inspection, :periodic_inspection_expiry_date, "انتهاء الفحص الدوري", "Periodic inspection"}
+    {:periodic_inspection, :periodic_inspection_expiry_date, "انتهاء الفحص الدوري",
+     "Periodic inspection"}
   ]
 
   @doc """
@@ -61,7 +63,11 @@ defmodule Fleetms.Integrations.WhatsApp.VehicleExpiryReminder do
       document_label,
       Date.to_iso8601(reminder.expiry_date),
       Integer.to_string(reminder.days_before),
-      if(String.starts_with?(language, "ar"), do: "يرجى التجديد قبل تاريخ الانتهاء", else: "Please renew before the expiry date")
+      if String.starts_with?(language, "ar") do
+        "يرجى التجديد قبل تاريخ الانتهاء"
+      else
+        "Please renew before the expiry date"
+      end
     ]
 
     [
