@@ -37,7 +37,7 @@ defmodule Fleetms.Integrations.WhatsApp.Config do
 
         {:error, "Missing WhatsApp settings: " <> Enum.join(missing, ", ")}
 
-      not Regex.match?(~r/^v[0-9]+\\.[0-9]+$/, values.api_version) ->
+      not Regex.match?(~r/^v[0-9]+\.[0-9]+$/, values.api_version) ->
         {:error, "WHATSAPP_GRAPH_API_VERSION must use the vNN.N format"}
 
       not Regex.match?(~r/^[0-9]+$/, values.phone_number_id) ->
