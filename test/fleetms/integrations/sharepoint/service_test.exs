@@ -64,4 +64,30 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert {:error, :forbidden} =
              Service.create(%{}, actor, :breakdown_reports, %{}, %{vehicle_id: "V-1"})
   end
+
+  test "invoice creation is denied outside the maintenance manager project and city scope" do
+    actor = %{role: :maintenance_manager, project_ids: ["P-1"], city_ids: ["JED"]}
+
+    assert {:error, :forbidden} =
+             Service.create(
+               %{},
+               actor,
+               :invoices,
+               %{"Title" => "INV-100", "ProjectId" => "P-2", "CityId" => "JED"},
+               %{project_id: "P-2", city_id: "JED"}
+             )
+  end
+
+  test "invoice creation rejects invoice fields that disagree with trusted scope" do
+    actor = %{role: :company_admin}
+
+    assert {:error, :submitted_scope_does_not_match_trusted_scope} =
+             Service.create(
+               %{},
+               actor,
+               :invoices,
+               %{"Title" => "INV-101", "ProjectId" => "P-2", "CityId" => "JED"},
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
 end
