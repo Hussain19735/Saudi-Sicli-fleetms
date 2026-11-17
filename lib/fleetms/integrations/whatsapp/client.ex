@@ -7,9 +7,10 @@ defmodule Fleetms.Integrations.WhatsApp.Client do
   Callers must authorize and resolve recipients before invoking this module.
   """
 
-  @phone_pattern ~r/^\+[1-9][0-9]{7,14}$/
   @template_pattern ~r/^[a-z0-9_]{1,512}$/
   @language_pattern ~r/^[a-z]{2,3}(_[A-Z]{2})?$/
+
+  alias Fleetms.Integrations.WhatsApp.VehicleExpiryReminder
 
   @type result :: {:ok, %{message_id: String.t()}} | {:error, term()}
 
@@ -100,10 +101,9 @@ defmodule Fleetms.Integrations.WhatsApp.Client do
   defp valid_settings?(_settings), do: false
 
   defp normalize_recipient(recipient) when is_binary(recipient) do
-    if Regex.match?(@phone_pattern, recipient) do
-      {:ok, String.replace_prefix(recipient, "+", "")}
-    else
-      {:error, :invalid_recipient_phone}
+    case VehicleExpiryReminder.normalize_phone(recipient) do
+      {:ok, normalized} -> {:ok, String.replace_prefix(normalized, "+", "")}
+      {:error, _reason} -> {:error, :invalid_recipient_phone}
     end
   end
 
