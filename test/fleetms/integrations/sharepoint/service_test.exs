@@ -289,6 +289,9 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                "PaymentReference" => "UNTRUSTED"
              })
 
+    assert fields["Amount"] == 100.0
+    assert fields["VATAmount"] == 15.0
+    assert fields["TotalAmount"] == 115.0
     assert fields["PaidAmount"] == 0.0
     assert fields["RemainingAmount"] == 115.0
     assert fields["PaymentStatus"] == "Unpaid"
