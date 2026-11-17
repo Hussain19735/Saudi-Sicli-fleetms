@@ -177,7 +177,7 @@ defmodule Fleetms.Integrations.SharePoint.Service do
         true ->
           scoped =
             acc
-            |> Map.delete(target_key)
+            |> Map.delete(alias_key)
             |> Map.put(sharepoint_field, trusted_value)
 
           {:cont, {:ok, scoped}}
