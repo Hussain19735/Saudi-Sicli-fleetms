@@ -12,10 +12,20 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicyTest do
     assert {:error, :forbidden} = AccessPolicy.authorize(actor, :approve_towing_invoice, %{project_id: "P-1"})
   end
 
-  test "only company admin can record invoice payments" do
+  test "Finance can read and pay only invoices within assigned scope" do
     target = %{project_id: "P-1", city_id: "JED"}
+    finance = %{role: :finance, project_ids: ["P-1"], city_ids: ["JED"]}
 
-    assert :ok = AccessPolicy.authorize(%{role: :company_admin}, :record_payment, target)
+    assert :ok = AccessPolicy.authorize(finance, :read_invoice, target)
+    assert :ok = AccessPolicy.authorize(finance, :record_payment, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(finance, :read, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(finance, :create, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(finance, :update, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(finance, :approve_supplier_invoice, target)
+    assert {:error, :forbidden} =
+             AccessPolicy.authorize(finance, :record_payment, %{project_id: "P-2", city_id: "JED"})
+
+    assert {:error, :forbidden} = AccessPolicy.authorize(%{role: :company_admin}, :record_payment, target)
 
     assert {:error, :forbidden} =
              AccessPolicy.authorize(
@@ -28,6 +38,25 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicyTest do
              AccessPolicy.authorize(
                %{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]},
                :record_payment,
+               target
+             )
+
+    assert :finance in Fleetms.Enums.basic_user_roles()
+  end
+
+  test "only a scoped maintenance manager can approve and send supplier invoices" do
+    manager = %{role: :maintenance_manager, project_ids: ["P-1"], city_ids: ["JED"]}
+    target = %{project_id: "P-1", city_id: "JED"}
+
+    assert :ok = AccessPolicy.authorize(manager, :approve_supplier_invoice, target)
+    assert :ok = AccessPolicy.authorize(manager, :send_invoice_to_finance, target)
+    assert {:error, :forbidden} =
+             AccessPolicy.authorize(manager, :approve_supplier_invoice, %{project_id: "P-2", city_id: "JED"})
+
+    assert {:error, :forbidden} =
+             AccessPolicy.authorize(
+               %{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]},
+               :approve_supplier_invoice,
                target
              )
   end
