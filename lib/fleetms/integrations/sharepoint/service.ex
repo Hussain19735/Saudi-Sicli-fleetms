@@ -166,9 +166,13 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     do: {:error, :invoice_amounts_missing_or_invalid}
 
   defp maybe_reject_invoice_financial_changes(:invoices, fields),
-    do: reject_invoice_financial_changes(fields)
+    do: validate_invoice_generic_update(fields)
 
   defp maybe_reject_invoice_financial_changes(_resource, _fields), do: :ok
+
+  @doc false
+  def validate_invoice_generic_update(fields) when is_map(fields),
+    do: reject_invoice_financial_changes(fields)
 
   defp reject_invoice_financial_changes(fields) do
     protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus)
