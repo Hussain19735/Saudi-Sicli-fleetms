@@ -17,7 +17,7 @@ defmodule Fleetms.Accounts.User do
 
   alias Ash.Error.Framework.AssumptionFailed
   alias Fleetms.Accounts.{Organization, Token, UserProfile}
-  alias __MODULE__.Policies.{IsAdmin, IsFleetManager, IsTechnician}
+  alias __MODULE__.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
   alias __MODULE__.Validations.ValidateCurrentPassword
 
   @default_sorting_params %{sort_by: :updated_at, sort_order: :desc}
@@ -120,7 +120,9 @@ defmodule Fleetms.Accounts.User do
     end
 
     policy action(:list) do
+      authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if IsTechnician
     end
   end
