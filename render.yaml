@@ -1,0 +1,37 @@
+databases:
+  - name: saudi-sicli-fleet-preview-db
+    databaseName: saudi_sicli_fleet_preview_db
+    user: saudi_sicli_fleet_preview_db_user
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: saudi-sicli-fleet-preview
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    autoDeploy: false
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saudi-sicli-fleet-preview-db
+          property: connectionString
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: TOKEN_SIGNING_SECRET
+        generateValue: true
+      - key: FLEETMS_PREVIEW_MODE
+        value: "true"
+      - key: FLEET_DATA_ADAPTER
+        value: "demo"
+      - key: WHATSAPP_VEHICLE_EXPIRY_NOTIFICATIONS_ENABLED
+        value: "false"
+      - key: PHX_HOST
+        value: saudi-sicli-fleet-preview.onrender.com
+      - key: PORT
+        value: "10000"
+      - key: POOL_SIZE
+        value: "5"
