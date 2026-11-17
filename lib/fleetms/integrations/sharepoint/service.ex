@@ -152,24 +152,24 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   def stamp_trusted_scope(fields, trusted_target)
       when is_map(fields) and is_map(trusted_target) do
     mappings = [
-      {"ProjectId", "project_id"},
-      {"CityId", "city_id"},
-      {"VehicleId", "vehicle_id"}
+      {"ProjectId", :project_id, "project_id"},
+      {"CityId", :city_id, "city_id"},
+      {"VehicleId", :vehicle_id, "vehicle_id"}
     ]
 
-    Enum.reduce_while(mappings, {:ok, fields}, fn {sharepoint_field, target_key}, {:ok, acc} ->
+    Enum.reduce_while(mappings, {:ok, fields}, fn {sharepoint_field, target_key, alias_key}, {:ok, acc} ->
       submitted =
-        [Map.get(acc, sharepoint_field), Map.get(acc, target_key)]
+        [Map.get(acc, sharepoint_field), Map.get(acc, alias_key)]
         |> Enum.reject(&is_nil/1)
 
-      trusted_value = Map.get(trusted_target, String.to_existing_atom(target_key))
+      trusted_value = Map.get(trusted_target, target_key)
 
       cond do
         is_nil(trusted_value) and submitted != [] ->
           {:halt, {:error, :submitted_scope_does_not_match_trusted_scope}}
 
         is_nil(trusted_value) ->
-          {:cont, {:ok, Map.delete(acc, target_key)}}
+          {:cont, {:ok, Map.delete(acc, alias_key)}}
 
         Enum.any?(submitted, &(&1 != trusted_value)) ->
           {:halt, {:error, :submitted_scope_does_not_match_trusted_scope}}
