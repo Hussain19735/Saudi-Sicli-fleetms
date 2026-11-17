@@ -288,11 +288,11 @@ defmodule FleetmsWeb.WorkOrderLive.Detail do
 
   @impl true
   def handle_event("complete_work_order", _params, socket) do
-    work_order = socket.assigns.work_order
+    %{tenant: tenant, current_user: actor, work_order: work_order} = socket.assigns
 
     work_order
     |> Ash.Changeset.for_update(:complete_work_order)
-    |> Ash.update!(actor: socket.assigns.current_user)
+    |> Ash.update!(tenant: tenant, actor: actor)
 
     socket =
       put_toast(socket, :info, "Work Order was marked as completed.")
