@@ -12,7 +12,8 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
       %{"id" => "V-4", "fields" => %{"ProjectId" => "P-1"}}
     ]
 
-    assert [%{"id" => "V-1"}] = Service.filter_vehicle_records(records, actor)
+    assert ["V-1", "V-4"] ==
+             Enum.map(Service.filter_vehicle_records(records, actor), & &1["id"])
   end
 
   test "vehicle list filtering limits employees to assigned vehicle IDs" do
