@@ -50,6 +50,10 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicyTest do
 
     assert :ok = AccessPolicy.authorize(manager, :approve_supplier_invoice, target)
     assert :ok = AccessPolicy.authorize(manager, :send_invoice_to_finance, target)
+    assert :ok = AccessPolicy.authorize(manager, :reject_supplier_invoice, target)
+    assert :ok = AccessPolicy.authorize(manager, :review_supplier_invoice, target)
+    assert :ok = AccessPolicy.authorize(%{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]}, :review_supplier_invoice, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(%{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]}, :reject_supplier_invoice, target)
     assert {:error, :forbidden} =
              AccessPolicy.authorize(manager, :approve_supplier_invoice, %{project_id: "P-2", city_id: "JED"})
 
