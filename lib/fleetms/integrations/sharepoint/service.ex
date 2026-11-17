@@ -75,20 +75,23 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   """
   def record_invoice_payment(settings, actor, invoice_id, payment_reference)
       when is_binary(invoice_id) and is_binary(payment_reference) do
-    with {:ok, invoice} <- Repository.get(settings, :invoices, invoice_id),
-         {:ok, trusted_scope} <- scope_from_item(invoice),
-         :ok <- authorize(actor, :record_payment, trusted_scope),
-         {:ok, invoice_fields} <- work_order_fields(invoice),
-         {:ok, update_fields} <- build_full_payment_update(invoice_fields, actor, payment_reference),
-         etag when is_binary(etag) and etag != "" <- Map.get(invoice, "eTag") || Map.get(invoice, "@odata.etag"),
-         :ok <- Repository.update(settings, :invoices, invoice_id, update_fields, etag) do
-      :ok
+    if String.trim(payment_reference) == "" do
+      {:error, :payment_reference_required}
     else
-      nil -> {:error, :invoice_etag_required}
-      _ when is_binary(payment_reference) and String.trim(payment_reference) == "" ->
-        {:error, :payment_reference_required}
-      {:error, _} = error -> error
-      _ -> {:error, :invoice_etag_required}
+      with {:ok, invoice} <- Repository.get(settings, :invoices, invoice_id),
+           {:ok, trusted_scope} <- scope_from_item(invoice),
+           :ok <- authorize(actor, :record_payment, trusted_scope),
+           {:ok, invoice_fields} <- work_order_fields(invoice),
+           {:ok, update_fields} <- build_full_payment_update(invoice_fields, actor, payment_reference),
+           etag when is_binary(etag) and etag != "" <-
+             Map.get(invoice, "eTag") || Map.get(invoice, "@odata.etag"),
+           :ok <- Repository.update(settings, :invoices, invoice_id, update_fields, etag) do
+        :ok
+      else
+        nil -> {:error, :invoice_etag_required}
+        {:error, _} = error -> error
+        _ -> {:error, :invoice_etag_required}
+      end
     end
   end
 
