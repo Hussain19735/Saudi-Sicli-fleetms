@@ -293,7 +293,7 @@
           <div
             :if={
               Ash.can?(
-                {Fleetms.Vehicleالبلاغات.Issue, :create},
+                {Fleetms.VehicleIssues.Issue, :create},
                 @current_user
               )
             }
@@ -432,7 +432,7 @@
             <div
               :if={
                 Ash.can?(
-                  {Fleetms.Vehicleالبلاغات.Issue, :destroy},
+                  {Fleetms.VehicleIssues.Issue, :destroy},
                   @current_user
                 )
               }
