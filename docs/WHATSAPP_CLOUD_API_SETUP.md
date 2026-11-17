@@ -47,3 +47,34 @@ The client:
 - does not expose the access token in returned errors.
 
 No fleet event handler or scheduled worker is connected in this initial stage. Add those only after the company confirms the approved message templates, recipient rules, language policy, and triggering events.
+
+
+## Vehicle document expiry reminders
+
+The first fleet notification workflow scans active vehicle assignments every day at **08:00 Saudi time (Asia/Riyadh)**. It checks these vehicle fields:
+
+- `registration_expiry_date`
+- `insurance_expiry_date`
+- `periodic_inspection_expiry_date`
+
+A reminder job is created on the 30-day and 15-day milestones and is addressed to the currently assigned driver's profile phone number. Saudi mobile numbers in `05xxxxxxxx` format are normalized to E.164; other numbers must already be valid E.164 values.
+
+The approved WhatsApp template must have five body placeholders in this exact order:
+
+1. Vehicle name and license plate
+2. Document type
+3. Expiry date (ISO format, `YYYY-MM-DD`)
+4. Days remaining (30 or 15)
+5. Renewal instruction
+
+Configure these additional server-side variables only after Meta has approved the matching template:
+
+- `WHATSAPP_VEHICLE_EXPIRY_NOTIFICATIONS_ENABLED=true` — explicit opt-in; defaults to false.
+- `WHATSAPP_VEHICLE_EXPIRY_TEMPLATE` — approved template name.
+- `WHATSAPP_VEHICLE_EXPIRY_TEMPLATE_LANGUAGE` — template language code; defaults to `ar`.
+
+The daily scan and sender workers remain inactive for WhatsApp delivery unless the opt-in flag is true and the Cloud API credentials are configured. The sender rechecks that the vehicle is still assigned to the same active driver and that the expiry date has not changed before sending.
+
+The sender uses a unique Oban job for each tenant, assignment, vehicle, document, expiry date, and milestone to avoid repeat queueing. Automatic retries are intentionally disabled for the actual send job because a network timeout can leave the provider acceptance state uncertain; failed sends require operational review rather than risking a duplicate message.
+
+The migration for the three expiry-date fields belongs to `priv/repo/tenant_migrations`, because vehicles are stored in each organization's tenant schema.
