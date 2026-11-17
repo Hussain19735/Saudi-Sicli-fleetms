@@ -9,7 +9,7 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
 
   @company_admin_roles [:company_admin]
   @maintenance_manager_roles [:maintenance_manager]
-  @maintenance_roles [:maintenance_manager, :maintenance_team]
+  @maintenance_roles [:maintenance_team]
 
   @type actor :: %{
           required(:role) => atom(),
@@ -62,19 +62,6 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
 
     authorize(Map.put(actor, :role, canonical_role), action, target)
   end
-
-  def authorize(%{role: role}, action, _target)
-      when role in @manager_roles and action in [
-             :read,
-             :create,
-             :update,
-             :approve_repair,
-             :approve_additional_repair,
-             :approve_towing_invoice,
-             :manage_users,
-             :manage_settings
-           ],
-      do: :ok
 
   def authorize(%{role: role} = actor, action, target)
       when role in @maintenance_roles and action in [
