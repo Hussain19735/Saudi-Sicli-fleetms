@@ -221,6 +221,33 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              )
   end
 
+  test "towing invoice requires a linked breakdown report" do
+    assert {:error, :breakdown_report_id_required} =
+             Service.create(
+               %{},
+               %{role: :company_admin},
+               :invoices,
+               %{"InvoiceType" => "Towing", "TotalAmount" => 250},
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
+
+  test "towing invoice cannot exceed its approved amount" do
+    assert :ok = Service.validate_towing_invoice_amount(250, 250)
+    assert :ok = Service.validate_towing_invoice_amount(200, 250)
+
+    assert {:error, :towing_invoice_exceeds_approved_amount} =
+             Service.validate_towing_invoice_amount(250.01, 250)
+  end
+
+  test "towing invoice fails closed when its amount or approval is invalid" do
+    assert {:error, :towing_invoice_amount_missing_or_invalid} =
+             Service.validate_towing_invoice_amount(nil, 250)
+
+    assert {:error, :towing_invoice_amount_missing_or_invalid} =
+             Service.validate_towing_invoice_amount(250, "invalid")
+  end
+
   test "repair invoice requires a linked work order" do
     assert {:error, :work_order_id_required} =
              Service.create(
