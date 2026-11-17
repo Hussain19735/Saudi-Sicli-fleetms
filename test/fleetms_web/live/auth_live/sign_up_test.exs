@@ -4,6 +4,11 @@ defmodule FleetmsWeb.SignUpLiveTest do
   import Phoenix.LiveViewTest
   import Fleetms.AccountsFixtures
 
+  setup_all do
+    Fleetms.FeatureFlags.Accounts.enable_user_registration()
+    :ok
+  end
+
   describe "Sign up page" do
     test "renders a sign up page", %{conn: conn} do
       {:ok, _lv, html} = live(conn, ~p"/sign-up")
