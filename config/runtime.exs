@@ -55,7 +55,10 @@ end
 
 if config_env() == :prod do
   sharepoint_settings =
-    case Fleetms.Integrations.SharePoint.Config.load(&System.get_env/1, :prod) do
+    preview_mode = System.get_env("FLEETMS_PREVIEW_MODE") == "true"
+    runtime_env = if preview_mode, do: :dev, else: :prod
+
+    case Fleetms.Integrations.SharePoint.Config.load(&System.get_env/1, runtime_env) do
       {:ok, settings} -> settings
       {:error, reason} -> raise "Fleet data adapter configuration error: #{reason}"
     end
