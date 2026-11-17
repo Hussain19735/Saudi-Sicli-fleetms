@@ -103,7 +103,7 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
       end
 
     case document_type do
-      {type, field, arabic_label, english_label} ->
+      {_type, field, arabic_label, english_label} ->
         if Map.get(vehicle, field) == expiry_date and args["days_before"] in [30, 15] do
           {:ok,
            %{
