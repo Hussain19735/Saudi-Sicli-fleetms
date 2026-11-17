@@ -38,8 +38,9 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       when is_map(fields) and is_map(trusted_target) do
     with :ok <- authorize(actor, :create, trusted_target),
          {:ok, scoped_fields} <- stamp_trusted_scope(fields, trusted_target),
-         :ok <- validate_invoice_approval(settings, fields, trusted_target) do
-      Repository.create(settings, :invoices, scoped_fields)
+         {:ok, invoice_fields} <- prepare_invoice_financial_fields(scoped_fields),
+         :ok <- validate_invoice_approval(settings, invoice_fields, trusted_target) do
+      Repository.create(settings, :invoices, invoice_fields)
     end
   end
 
@@ -61,9 +62,117 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     with {:ok, item} <- Repository.get(settings, resource, item_id),
          {:ok, trusted_scope} <- scope_from_item(item),
          :ok <- authorize(actor, :update, trusted_scope),
-         :ok <- reject_scope_changes(fields) do
+         :ok <- reject_scope_changes(fields),
+         :ok <- maybe_reject_invoice_financial_changes(resource, fields) do
       Repository.update(settings, resource, item_id, fields, etag)
     end
+  end
+
+  @doc """
+  Records a single full invoice payment. Partial payments are intentionally not
+  supported by the current SharePoint invoice contract. The record ETag is
+  required so concurrent payment attempts cannot silently overwrite each other.
+  """
+  def record_invoice_payment(settings, actor, invoice_id, payment_reference)
+      when is_binary(invoice_id) and is_binary(payment_reference) do
+    with {:ok, invoice} <- Repository.get(settings, :invoices, invoice_id),
+         {:ok, trusted_scope} <- scope_from_item(invoice),
+         :ok <- authorize(actor, :record_payment, trusted_scope),
+         {:ok, invoice_fields} <- work_order_fields(invoice),
+         {:ok, update_fields} <- build_full_payment_update(invoice_fields, actor, payment_reference),
+         etag when is_binary(etag) and etag != "" <- Map.get(invoice, "eTag") || Map.get(invoice, "@odata.etag"),
+         :ok <- Repository.update(settings, :invoices, invoice_id, update_fields, etag) do
+      :ok
+    else
+      nil -> {:error, :invoice_etag_required}
+      _ when is_binary(payment_reference) and String.trim(payment_reference) == "" ->
+        {:error, :payment_reference_required}
+      {:error, _} = error -> error
+      _ -> {:error, :invoice_etag_required}
+    end
+  end
+
+  def record_invoice_payment(_settings, _actor, _invoice_id, _payment_reference),
+    do: {:error, :payment_reference_required}
+
+  @doc false
+  def prepare_invoice_financial_fields(fields) when is_map(fields) do
+    with {:ok, amount} <- decimal_amount(get_field(fields, ["Amount", "amount"])),
+         {:ok, vat} <- decimal_amount(get_field(fields, ["VATAmount", "vat_amount"])),
+         {:ok, total} <- decimal_amount(get_field(fields, ["TotalAmount", "total_amount"])),
+         true <- Enum.all?([amount, vat, total], &(Decimal.compare(&1, Decimal.new(0)) in [:gt, :eq])),
+         true <- Decimal.compare(Decimal.add(amount, vat), total) == :eq do
+      {:ok,
+       fields
+       |> Map.delete("paid_amount")
+       |> Map.delete("remaining_amount")
+       |> Map.delete("payment_status")
+       |> Map.put("PaidAmount", 0.0)
+       |> Map.put("RemainingAmount", Decimal.to_float(Decimal.round(total, 2)))
+       |> Map.put("PaymentStatus", "Unpaid")
+       |> Map.delete("PaymentReference")
+       |> Map.delete("PaidAt")
+       |> Map.delete("PaidBy")
+       |> Map.delete("PaidByRole")}
+    else
+      false -> {:error, :invoice_total_mismatch_or_negative_amount}
+      :error -> {:error, :invoice_amounts_missing_or_invalid}
+    end
+  end
+
+  def prepare_invoice_financial_fields(_fields),
+    do: {:error, :invoice_amounts_missing_or_invalid}
+
+  @doc false
+  def build_full_payment_update(fields, actor, payment_reference, paid_at \\ DateTime.utc_now())
+      when is_map(fields) and is_map(actor) and is_binary(payment_reference) do
+    with true <- String.trim(payment_reference) != "",
+         {:ok, total} <- decimal_amount(get_field(fields, ["TotalAmount", "total_amount"])),
+         {:ok, paid} <- decimal_amount(get_field(fields, ["PaidAmount", "paid_amount"]) || 0),
+         true <- Decimal.compare(total, Decimal.new(0)) == :gt,
+         true <- Decimal.compare(paid, Decimal.new(0)) == :eq,
+         actor_id when is_binary(actor_id) and actor_id != "" <-
+           [Map.get(actor, :id), Map.get(actor, :email)] |> Enum.find(&(is_binary(&1) and String.trim(&1) != "")),
+         role when is_atom(role) <- Map.get(actor, :role) do
+      {:ok,
+       %{
+         "PaidAmount" => Decimal.to_float(Decimal.round(total, 2)),
+         "RemainingAmount" => 0.0,
+         "PaymentStatus" => "Paid",
+         "PaymentReference" => String.trim(payment_reference),
+         "PaidAt" => DateTime.truncate(paid_at, :second) |> DateTime.to_iso8601(),
+         "PaidBy" => actor_id,
+         "PaidByRole" => Atom.to_string(role)
+       }}
+    else
+      false -> {:error, :invoice_already_paid_or_payment_reference_required}
+      nil -> {:error, :invoice_payment_actor_identity_required}
+      :error -> {:error, :invoice_amounts_missing_or_invalid}
+      _ -> {:error, :invoice_payment_actor_identity_required}
+    end
+  end
+
+  def build_full_payment_update(_fields, _actor, _payment_reference, _paid_at),
+    do: {:error, :invoice_amounts_missing_or_invalid}
+
+  defp maybe_reject_invoice_financial_changes(:invoices, fields),
+    do: reject_invoice_financial_changes(fields)
+
+  defp maybe_reject_invoice_financial_changes(_resource, _fields), do: :ok
+
+  defp reject_invoice_financial_changes(fields) do
+    protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus)
+
+    changed? =
+      Enum.any?(Map.keys(fields), fn key ->
+        key
+        |> to_string()
+        |> String.downcase()
+        |> String.replace(~r/[^a-z]/, "")
+        |> then(&(&1 in protected))
+      end)
+
+    if changed?, do: {:error, :invoice_financial_update_requires_payment_operation}, else: :ok
   end
 
   # Deliberately do not expose an update function that accepts a caller-supplied
