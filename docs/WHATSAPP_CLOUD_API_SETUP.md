@@ -38,7 +38,7 @@ Never place the access token in browser code, mobile app configuration, source c
 Use `Fleetms.Integrations.WhatsApp.Client.send_template/6` from trusted server-side code only.
 
 The client:
-- accepts E.164 recipient numbers;
+- accepts E.164 recipient numbers and normalizes common Saudi mobile formats;
 - sends template messages only;
 - validates template names, language codes, and component structure;
 - disables automatic HTTP retries to reduce accidental duplicate sends;
