@@ -49,11 +49,15 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
         :ok
 
       {:error, :invalid_phone} ->
-        Logger.warning("Vehicle expiry reminder skipped because the assigned driver has no valid WhatsApp number")
+        Logger.warning(
+          "Vehicle expiry reminder skipped because the assigned driver has no valid WhatsApp number"
+        )
         :ok
 
       {:error, reason} ->
-        Logger.error("WhatsApp vehicle expiry reminder failed: #{inspect(reason)}")
+        Logger.error(
+          "WhatsApp vehicle expiry reminder failed: #{inspect(reason)}"
+        )
         {:error, reason}
 
       _ ->
@@ -76,7 +80,8 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
       |> Ash.Query.load(assignee: [:user_profile], vehicle: [])
 
     case Ash.read(query, tenant: tenant) do
-      {:ok, [assignment | _]} when not is_nil(assignment.vehicle) and not is_nil(assignment.assignee) ->
+      {:ok, [assignment | _]}
+      when not is_nil(assignment.vehicle) and not is_nil(assignment.assignee) ->
         {:ok, assignment}
 
       {:ok, _} ->
@@ -96,9 +101,16 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
   defp reminder_data(args, expiry_date, vehicle) do
     document_type =
       case args["document_type"] do
-        "registration" -> {:registration, :registration_expiry_date, "انتهاء استمارة المركبة", "Vehicle registration"}
-        "insurance" -> {:insurance, :insurance_expiry_date, "انتهاء تأمين المركبة", "Vehicle insurance"}
-        "periodic_inspection" -> {:periodic_inspection, :periodic_inspection_expiry_date, "انتهاء الفحص الدوري", "Periodic inspection"}
+        "registration" ->
+          {:registration, :registration_expiry_date, "انتهاء استمارة المركبة",
+           "Vehicle registration"}
+
+        "insurance" ->
+          {:insurance, :insurance_expiry_date, "انتهاء تأمين المركبة", "Vehicle insurance"}
+
+        "periodic_inspection" ->
+          {:periodic_inspection, :periodic_inspection_expiry_date, "انتهاء الفحص الدوري",
+           "Periodic inspection"}
         _ -> nil
       end
 
