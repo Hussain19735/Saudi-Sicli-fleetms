@@ -99,4 +99,4 @@ RUN chmod +x /app/bin/migrate
 # advised to add an init process such as tini via `apt-get install`
 # above and adding an entrypoint. See https://github.com/krallin/tini for details
 # ENTRYPOINT ["tini", "--"]
-CMD ["/app/bin/server"]
+CMD ["/bin/sh", "-c", "/app/bin/migrate && exec /app/bin/server"]
