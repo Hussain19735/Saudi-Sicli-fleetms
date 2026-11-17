@@ -14,9 +14,10 @@
 ARG ELIXIR_VERSION=1.16.2
 ARG OTP_VERSION=26.1.2
 ARG DEBIAN_VERSION=bullseye-20240513-slim
+ARG RUNNER_DEBIAN_VERSION=bookworm-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
-ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
+ARG RUNNER_IMAGE="debian:${RUNNER_DEBIAN_VERSION}"
 
 FROM ${BUILDER_IMAGE} as builder
 
@@ -97,5 +98,5 @@ RUN chmod +x /app/bin/migrate
 # If using an environment that doesn't automatically reap zombie processes, it is
 # advised to add an init process such as tini via `apt-get install`
 # above and adding an entrypoint. See https://github.com/krallin/tini for details
-# ENTRYPOINT ["/tini", "--"]
+# ENTRYPOINT ["tini", "--"]
 CMD ["/app/bin/server"]
