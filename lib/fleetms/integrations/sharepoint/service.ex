@@ -23,6 +23,15 @@ defmodule Fleetms.Integrations.SharePoint.Service do
 
   @spec create(map(), term(), atom(), map(), map()) ::
           {:ok, map()} | {:error, term()}
+  def create(settings, actor, :approval_records, fields, trusted_target)
+      when is_map(fields) and is_map(trusted_target) do
+    with {:ok, approval_action} <- approval_action(fields),
+         :ok <- authorize(actor, approval_action, trusted_target),
+         :ok <- validate_create_scope(fields, trusted_target) do
+      Repository.create(settings, :approval_records, fields)
+    end
+  end
+
   def create(settings, actor, resource, fields, trusted_target)
       when is_map(fields) and is_map(trusted_target) do
     with :ok <- authorize(actor, :create, trusted_target),
@@ -33,6 +42,9 @@ defmodule Fleetms.Integrations.SharePoint.Service do
 
   @spec update_existing(map(), map(), atom(), String.t(), map(), String.t() | nil) ::
           :ok | {:error, term()}
+  def update_existing(_settings, _actor, :approval_records, _item_id, _fields, _etag),
+    do: {:error, :approval_records_are_immutable}
+
   def update_existing(settings, actor, resource, item_id, fields, etag)
       when is_binary(item_id) and is_map(fields) do
     with {:ok, item} <- Repository.get(settings, resource, item_id),
@@ -51,6 +63,17 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   def list(settings, actor, resource, opts, trusted_scope) when is_map(trusted_scope) do
     with :ok <- authorize(actor, :read, trusted_scope) do
       Repository.list(settings, resource, opts)
+    end
+  end
+
+  defp approval_action(fields) do
+    approval_type = get_field(fields, ["ApprovalType", "approval_type"])
+
+    case approval_type do
+      "Repair" -> {:ok, :approve_repair}
+      "Additional Repair Cost" -> {:ok, :approve_additional_repair}
+      "Towing Invoice" -> {:ok, :approve_towing_invoice}
+      _ -> {:error, :invalid_approval_type}
     end
   end
 
