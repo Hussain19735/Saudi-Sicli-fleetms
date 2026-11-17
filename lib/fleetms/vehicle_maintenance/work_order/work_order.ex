@@ -9,7 +9,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
   # TODO: In the future, allow users to create a completed work order, meaning they can select status, date and time completed, then
   # the added line items e.g issues, service reminders will be resolved and reset respectively
 
-  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsTechnician}
+  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
   require Ash.Query
 
   attributes do
@@ -134,18 +134,23 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     end
 
     policy action_type(:read) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action(:create) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if IsTechnician
     end
 
     policy action(:update) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if relates_to_actor_via(:assigned_to)
     end
 
@@ -156,7 +161,10 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     end
 
     policy action([:save_work_order_photos, :maybe_delete_existing_photos]) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if relates_to_actor_via(:assigned_to)
     end
 
     policy action(:reopen_work_order) do
@@ -167,6 +175,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     policy action(:destroy) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
     end
   end
 
