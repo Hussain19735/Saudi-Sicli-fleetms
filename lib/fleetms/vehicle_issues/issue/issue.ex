@@ -6,7 +6,7 @@ defmodule Fleetms.VehicleIssues.Issue do
       Ash.Policy.Authorizer
     ]
 
-  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
+  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsDriver, IsFleetManager, IsMaintenanceManager, IsTechnician}
   require Ash.Query
 
   attributes do
