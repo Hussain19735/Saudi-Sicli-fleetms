@@ -37,3 +37,6 @@ config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 config :bcrypt_elixir, log_rounds: 1
 config :ash, :disable_async?, true
+
+# Keep Oban workers/plugins from starting background database processes in tests.
+config :fleetms, Oban, testing: :manual
