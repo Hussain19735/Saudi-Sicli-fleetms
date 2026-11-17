@@ -41,6 +41,36 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              Service.list(%{}, actor, :vehicles, [], %{})
   end
 
+  test "generic update rejects project and city reassignment fields" do
+    actor = %{role: :company_admin}
+
+    assert {:error, :scope_change_requires_reassignment} =
+             Service.update(
+               %{},
+               actor,
+               :vehicles,
+               "V-1",
+               %{"ProjectId" => "P-2"},
+               nil,
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
+
+  test "generic update rejects vehicle relationship changes" do
+    actor = %{role: :company_admin}
+
+    assert {:error, :scope_change_requires_reassignment} =
+             Service.update(
+               %{},
+               actor,
+               :vehicle_assignments,
+               "A-1",
+               %{"vehicle_id" => "V-2"},
+               nil,
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
+
   test "company admin is authorized for an in-scope operation" do
     assert :ok =
              Service.authorize(%{role: :company_admin}, :update, %{
