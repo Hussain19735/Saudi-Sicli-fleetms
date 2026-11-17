@@ -28,9 +28,13 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
         tenant_prefix = Organization.get_schema_prefix() <> tenant.id
 
         VehicleAssignment
-        |> Ash.Query.filter(start_datetime <= ^now and (is_nil(end_datetime) or end_datetime > ^now))
+        |> Ash.Query.filter(
+          start_datetime <= ^now and (is_nil(end_datetime) or end_datetime > ^now)
+        )
+        |> Ash.Query.sort(start_datetime: :desc)
         |> Ash.Query.load(assignee: [:user_profile], vehicle: [])
         |> Ash.read!(tenant: tenant)
+        |> Enum.uniq_by(& &1.vehicle_id)
         |> Enum.each(fn assignment ->
           enqueue_due_reminders(assignment, tenant_prefix, today)
         end)
@@ -64,7 +68,9 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
               :ok
 
             {:error, reason} ->
-              Logger.error("Could not enqueue vehicle document reminder: #{inspect(reason)}")
+              Logger.error(
+                "Could not enqueue vehicle document reminder: #{inspect(reason)}"
+              )
           end
         end)
 
@@ -74,5 +80,4 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
   end
 
   defp enqueue_due_reminders(_assignment, _tenant, _today), do: :ok
-
 end
