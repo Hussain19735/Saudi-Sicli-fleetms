@@ -34,6 +34,15 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     end
   end
 
+  def create(settings, actor, :invoices, fields, trusted_target)
+      when is_map(fields) and is_map(trusted_target) do
+    with :ok <- authorize(actor, :create, trusted_target),
+         {:ok, scoped_fields} <- stamp_trusted_scope(fields, trusted_target),
+         :ok <- validate_invoice_approval(settings, fields, trusted_target) do
+      Repository.create(settings, :invoices, scoped_fields)
+    end
+  end
+
   def create(settings, actor, resource, fields, trusted_target)
       when is_map(fields) and is_map(trusted_target) do
     with :ok <- authorize(actor, :create, trusted_target),
@@ -67,6 +76,117 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       Repository.list(settings, resource, opts)
     end
   end
+
+  defp validate_invoice_approval(settings, fields, trusted_target) do
+    case get_field(fields, ["InvoiceType", "invoice_type"]) do
+      "Repair" ->
+        validate_repair_invoice_approval(settings, fields, trusted_target)
+
+      type when type in ["Spare Parts", "Towing", "Periodic Inspection", "Tires", "Other"] ->
+        :ok
+
+      _ ->
+        {:error, :invalid_invoice_type}
+    end
+  end
+
+  defp validate_repair_invoice_approval(settings, fields, trusted_target) do
+    case get_field(fields, ["WorkOrderId", "work_order_id"]) do
+      work_order_id when is_binary(work_order_id) and work_order_id != "" ->
+        with {:ok, work_order} <- Repository.get(settings, :work_orders, work_order_id),
+             {:ok, work_order_fields} <- work_order_fields(work_order),
+             {:ok, work_order_scope} <- scope_from_item(work_order),
+             :ok <- ensure_scope_match(work_order_scope, trusted_target),
+             {:ok, additional_approved} <-
+               approved_additional_amount(settings, work_order_id, work_order_scope) do
+          validate_repair_cost_approval(
+            get_field(work_order_fields, ["ActualRepairCost", "actual_repair_cost"]),
+            get_field(work_order_fields, ["ApprovedRepairCost", "approved_repair_cost"]),
+            additional_approved
+          )
+        end
+
+      _ ->
+        {:error, :work_order_id_required}
+    end
+  end
+
+  defp work_order_fields(%{"fields" => fields}) when is_map(fields), do: {:ok, fields}
+  defp work_order_fields(_work_order), do: {:error, :invalid_work_order_record}
+
+  defp ensure_scope_match(record_scope, trusted_target) do
+    matches? =
+      Enum.all?([:project_id, :city_id, :vehicle_id], fn key ->
+        case Map.get(trusted_target, key) do
+          nil -> true
+          trusted_value -> Map.get(record_scope, key) == trusted_value
+        end
+      end)
+
+    if matches?, do: :ok, else: {:error, :work_order_scope_mismatch}
+  end
+
+  defp approved_additional_amount(settings, work_order_id, work_order_scope) do
+    with {:ok, records} <- Repository.list(settings, :approval_records, []) do
+      records
+      |> Enum.filter(&approved_additional_repair_for?(&1, work_order_id, work_order_scope))
+      |> Enum.reduce_while({:ok, Decimal.new(0)}, fn record, {:ok, total} ->
+        amount =
+          record
+          |> Map.get("fields", %{})
+          |> get_field(["ApprovedAmount", "approved_amount"])
+
+        case decimal_amount(amount) do
+          {:ok, decimal} -> {:cont, {:ok, Decimal.add(total, decimal)}}
+          :error -> {:halt, {:error, :invalid_additional_approval_amount}}
+        end
+      end)
+    end
+  end
+
+  defp approved_additional_repair_for?(%{"fields" => fields}, work_order_id, work_order_scope)
+       when is_map(fields) do
+    get_field(fields, ["ParentRecordId", "parent_record_id"]) == work_order_id and
+      get_field(fields, ["ApprovalType", "approval_type"]) == "Additional Repair Cost" and
+      get_field(fields, ["Decision", "decision"]) == "Approved" and
+      Enum.all?([:project_id, :city_id, :vehicle_id], fn key ->
+        case Map.get(work_order_scope, key) do
+          nil -> true
+          value -> get_field(fields, [scope_field_name(key)]) == value
+        end
+      end)
+  end
+
+  defp approved_additional_repair_for?(_record, _work_order_id, _work_order_scope), do: false
+
+  defp scope_field_name(:project_id), do: "ProjectId"
+  defp scope_field_name(:city_id), do: "CityId"
+  defp scope_field_name(:vehicle_id), do: "VehicleId"
+
+  @doc false
+  def validate_repair_cost_approval(actual_cost, approved_cost, additional_approved) do
+    with {:ok, actual} <- decimal_amount(actual_cost),
+         {:ok, approved} <- decimal_amount(approved_cost),
+         {:ok, additional} <- decimal_amount(additional_approved),
+         true <- Decimal.compare(actual, Decimal.add(approved, additional)) in [:lt, :eq] do
+      :ok
+    else
+      false -> {:error, :additional_repair_approval_required}
+      :error -> {:error, :repair_cost_data_missing_or_invalid}
+    end
+  end
+
+  defp decimal_amount(value) when is_integer(value), do: {:ok, Decimal.new(value)}
+  defp decimal_amount(value) when is_float(value), do: {:ok, Decimal.from_float(value)}
+
+  defp decimal_amount(value) when is_binary(value) do
+    case Decimal.parse(value) do
+      {decimal, ""} -> {:ok, decimal}
+      _ -> :error
+    end
+  end
+
+  defp decimal_amount(_value), do: :error
 
   defp validate_approval_record(fields) do
     decision = get_field(fields, ["Decision", "decision"])
