@@ -190,6 +190,34 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              )
   end
 
+  test "create stamps missing scope fields from trusted server target" do
+    assert {:ok, scoped_fields} =
+             Service.stamp_trusted_scope(
+               %{"Title" => "INV-101"},
+               %{project_id: "P-1", city_id: "JED", vehicle_id: "V-1"}
+             )
+
+    assert scoped_fields["ProjectId"] == "P-1"
+    assert scoped_fields["CityId"] == "JED"
+    assert scoped_fields["VehicleId"] == "V-1"
+  end
+
+  test "create rejects caller-supplied scope that conflicts with trusted target" do
+    assert {:error, :submitted_scope_does_not_match_trusted_scope} =
+             Service.stamp_trusted_scope(
+               %{"ProjectId" => "P-2"},
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
+
+  test "create rejects scope values without a trusted server relationship" do
+    assert {:error, :submitted_scope_does_not_match_trusted_scope} =
+             Service.stamp_trusted_scope(
+               %{"VehicleId" => "V-1"},
+               %{project_id: "P-1"}
+             )
+  end
+
   test "invoice creation rejects invoice fields that disagree with trusted scope" do
     actor = %{role: :company_admin}
 
