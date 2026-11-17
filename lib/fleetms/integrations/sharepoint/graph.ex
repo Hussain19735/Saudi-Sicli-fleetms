@@ -56,7 +56,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
           {:ok, map()} | graph_error()
   def get_item(settings, list_id, item_id) do
     url =
-      "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items/#{segment(item_id)}?\\$expand=fields"
+      "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items/#{segment(item_id)}?$expand=fields"
 
     with {:ok, token} <- access_token(settings),
          {:ok, %Req.Response{body: body}} <- graph_get(url, token),
