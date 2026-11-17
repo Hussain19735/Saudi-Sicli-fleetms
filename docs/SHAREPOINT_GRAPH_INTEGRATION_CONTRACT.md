@@ -85,8 +85,8 @@ Provision list names and fields according to docs/SAUDI_SICLI_FLEET_MODULES.md, 
 - InvoiceDate (Date), VehicleId, WorkOrderId, BreakdownReportId, ProjectId, SupplierId (Text; indexed references)
 - Amount, VATAmount, TotalAmount, PaidAmount, RemainingAmount (Currency)
 - ApprovalStatus (Choice): Received, Under Review, Approved, Sent to Finance, Rejected
-- ApprovedBy, ApprovedByRole, SentToFinanceBy, SentToFinanceByRole (Text)
-- ApprovedAt, SentToFinanceAt (DateTime)
+- ReviewedBy, ReviewedByRole, RejectedBy, RejectedByRole, ApprovedBy, ApprovedByRole, SentToFinanceBy, SentToFinanceByRole (Text)
+- ReviewedAt, RejectedAt, ApprovedAt, SentToFinanceAt (DateTime)
 - PaymentStatus (Choice): Unpaid, Paid
 - PaymentReference, PaidBy, PaidByRole (Text)
 - PaidAt (DateTime)
