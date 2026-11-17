@@ -160,6 +160,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     policy action(:complete_work_order) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if relates_to_actor_via(:assigned_to)
     end
 
@@ -173,6 +174,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     policy action(:reopen_work_order) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
     end
 
     policy action(:destroy) do
