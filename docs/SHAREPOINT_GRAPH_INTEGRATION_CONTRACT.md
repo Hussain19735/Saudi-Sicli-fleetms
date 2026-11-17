@@ -32,6 +32,7 @@ Application/business logic must depend on a storage behaviour, not call Microsof
 
 Suggested operations:
 - list(resource, filters, paging)
+- read-only Vehicles listing applies server-side authorization to each returned record using its SharePoint item ID and ProjectId/CityId; records with missing required scope are excluded for scoped roles
 - get(resource, item_id)
 - create(resource, attributes, actor)
 - update(resource, item_id, attributes, actor, expected_version)
