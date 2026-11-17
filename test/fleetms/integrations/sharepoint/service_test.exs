@@ -227,7 +227,7 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                %{},
                %{role: :company_admin},
                :invoices,
-               %{"InvoiceType" => "Towing", "TotalAmount" => 250},
+               %{"InvoiceType" => "Towing", "Amount" => 250, "VATAmount" => 0, "TotalAmount" => 250},
                %{project_id: "P-1", city_id: "JED"}
              )
   end
@@ -254,7 +254,7 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                %{},
                %{role: :company_admin},
                :invoices,
-               %{"InvoiceType" => "Repair"},
+               %{"InvoiceType" => "Repair", "Amount" => 100, "VATAmount" => 15, "TotalAmount" => 115},
                %{project_id: "P-1", city_id: "JED"}
              )
   end
@@ -275,6 +275,87 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
 
     assert {:error, :repair_cost_data_missing_or_invalid} =
              Service.validate_repair_cost_approval(1_500, "not-a-number", 500)
+  end
+
+  test "invoice creation calculates unpaid and remaining amounts on the server" do
+    assert {:ok, fields} =
+             Service.prepare_invoice_financial_fields(%{
+               "Amount" => 100,
+               "VATAmount" => 15,
+               "TotalAmount" => 115,
+               "PaidAmount" => 115,
+               "RemainingAmount" => 0,
+               "PaymentStatus" => "Paid",
+               "PaymentReference" => "UNTRUSTED"
+             })
+
+    assert fields["PaidAmount"] == 0.0
+    assert fields["RemainingAmount"] == 115.0
+    assert fields["PaymentStatus"] == "Unpaid"
+    refute Map.has_key?(fields, "PaymentReference")
+  end
+
+  test "invoice creation rejects inconsistent or negative totals" do
+    assert {:error, :invoice_total_mismatch_or_negative_amount} =
+             Service.prepare_invoice_financial_fields(%{
+               "Amount" => 100,
+               "VATAmount" => 15,
+               "TotalAmount" => 120
+             })
+
+    assert {:error, :invoice_total_mismatch_or_negative_amount} =
+             Service.prepare_invoice_financial_fields(%{
+               "Amount" => -100,
+               "VATAmount" => 0,
+               "TotalAmount" => -100
+             })
+  end
+
+  test "invoice creation requires valid amount, VAT and total values" do
+    assert {:error, :invoice_amounts_missing_or_invalid} =
+             Service.prepare_invoice_financial_fields(%{
+               "Amount" => 100,
+               "TotalAmount" => 115
+             })
+  end
+
+  test "full invoice payment records payer identity and closes the balance" do
+    actor = %{role: :company_admin, id: "admin-1", email: "admin@example.com"}
+    paid_at = ~U[2026-11-17 10:00:00Z]
+
+    assert {:ok, update} =
+             Service.build_full_payment_update(
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Unpaid"},
+               actor,
+               "BANK-REF-123",
+               paid_at
+             )
+
+    assert update["PaidAmount"] == 115.0
+    assert update["RemainingAmount"] == 0.0
+    assert update["PaymentStatus"] == "Paid"
+    assert update["PaymentReference"] == "BANK-REF-123"
+    assert update["PaidBy"] == "admin-1"
+    assert update["PaidByRole"] == "company_admin"
+    assert update["PaidAt"] == "2026-11-17T10:00:00Z"
+  end
+
+  test "invoice cannot be paid twice" do
+    assert {:error, :invoice_already_paid_or_payment_reference_required} =
+             Service.build_full_payment_update(
+               %{"TotalAmount" => 115, "PaidAmount" => 115, "PaymentStatus" => "Paid"},
+               %{role: :company_admin, email: "admin@example.com"},
+               "BANK-REF-124"
+             )
+  end
+
+  test "invoice payment requires an authenticated actor identity" do
+    assert {:error, :invoice_payment_actor_identity_required} =
+             Service.build_full_payment_update(
+               %{"TotalAmount" => 115, "PaidAmount" => 0},
+               %{role: :company_admin},
+               "BANK-REF-125"
+             )
   end
 
   test "invoice creation rejects invoice fields that disagree with trusted scope" do
