@@ -344,7 +344,7 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert update["RemainingAmount"] == 0.0
     assert update["PaymentStatus"] == "Paid"
     assert update["PaymentReference"] == "BANK-REF-123"
-    assert update["PaidBy"] == "admin-1"
+    assert update["PaidBy"] == "finance-1"
     assert update["PaidByRole"] == "finance"
     assert update["PaidAt"] == "2026-11-17T10:00:00Z"
   end
