@@ -99,7 +99,12 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                %{},
                actor,
                :approval_records,
-               %{"ApprovalType" => "Additional Repair Cost", "Decision" => "Approved"},
+               %{
+                 "ApprovalType" => "Additional Repair Cost",
+                 "Decision" => "Approved",
+                 "ParentRecordId" => "WO-1",
+                 "ApprovedAmount" => 100
+               },
                %{project_id: "P-1", city_id: "JED"}
              )
 
@@ -108,7 +113,12 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                %{},
                actor,
                :approval_records,
-               %{"ApprovalType" => "Additional Repair Cost", "Decision" => "Approved"},
+               %{
+                 "ApprovalType" => "Additional Repair Cost",
+                 "Decision" => "Approved",
+                 "ParentRecordId" => "WO-1",
+                 "ApprovedAmount" => 100
+               },
                %{project_id: "P-2", city_id: "JED"}
              )
   end
