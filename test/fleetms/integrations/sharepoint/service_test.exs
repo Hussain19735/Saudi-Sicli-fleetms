@@ -358,6 +358,28 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              )
   end
 
+  test "generic invoice updates cannot change payment or financial fields" do
+    assert {:error, :invoice_financial_update_requires_payment_operation} =
+             Service.validate_invoice_generic_update(%{"PaidAmount" => 115})
+
+    assert {:error, :invoice_financial_update_requires_payment_operation} =
+             Service.validate_invoice_generic_update(%{"PaymentStatus" => "Paid"})
+
+    assert {:error, :invoice_financial_update_requires_payment_operation} =
+             Service.validate_invoice_generic_update(%{"TotalAmount" => 115})
+
+    assert :ok = Service.validate_invoice_generic_update(%{"Notes" => "Invoice reviewed"})
+  end
+
+  test "invoice cannot be paid twice even if paid amount is inconsistent" do
+    assert {:error, :invoice_already_paid_or_payment_reference_required} =
+             Service.build_full_payment_update(
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Paid"},
+               %{role: :company_admin, email: "admin@example.com"},
+               "BANK-REF-126"
+             )
+  end
+
   test "invoice creation rejects invoice fields that disagree with trusted scope" do
     actor = %{role: :company_admin}
 
