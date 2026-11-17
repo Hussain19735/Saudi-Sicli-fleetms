@@ -134,6 +134,8 @@ defmodule Fleetms.Integrations.SharePoint.Service do
 
   @doc false
   def build_full_payment_update(fields, actor, payment_reference, paid_at \\ DateTime.utc_now())
+
+  def build_full_payment_update(fields, actor, payment_reference, paid_at)
       when is_map(fields) and is_map(actor) and is_binary(payment_reference) do
     with true <- String.trim(payment_reference) != "",
          {:ok, total} <- decimal_amount(get_field(fields, ["TotalAmount", "total_amount"])),
