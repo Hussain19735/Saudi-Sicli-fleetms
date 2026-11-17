@@ -43,16 +43,9 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     end
   end
 
-  @spec update(map(), term(), atom(), String.t(), map(), String.t() | nil, map()) ::
-          :ok | {:error, term()}
-  def update(settings, actor, resource, item_id, fields, etag, trusted_existing_target)
-      when is_map(fields) and is_map(trusted_existing_target) do
-    with :ok <- authorize(actor, :update, trusted_existing_target),
-         :ok <- reject_scope_changes(fields) do
-      Repository.update(settings, resource, item_id, fields, etag)
-    end
-  end
-
+  # Deliberately do not expose an update function that accepts a caller-supplied
+  # scope. Use update_existing/6, which retrieves the record from SharePoint
+  # before checking authorization.
   @spec list(map(), map(), atom(), keyword(), map()) ::
           {:ok, [map()]} | {:error, term()}
   def list(settings, actor, resource, opts, trusted_scope) when is_map(trusted_scope) do
