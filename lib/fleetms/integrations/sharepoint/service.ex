@@ -104,14 +104,20 @@ defmodule Fleetms.Integrations.SharePoint.Service do
          {:ok, vat} <- decimal_amount(get_field(fields, ["VATAmount", "vat_amount"])),
          {:ok, total} <- decimal_amount(get_field(fields, ["TotalAmount", "total_amount"])),
          true <- Enum.all?([amount, vat, total], &(Decimal.compare(&1, Decimal.new(0)) in [:gt, :eq])),
+         true <- Decimal.compare(total, Decimal.new(0)) == :gt,
+         true <- Enum.all?([amount, vat, total], &(Decimal.compare(Decimal.round(&1, 2), &1) == :eq)),
          true <- Decimal.compare(Decimal.add(amount, vat), total) == :eq do
       {:ok,
        fields
        |> Map.delete("paid_amount")
        |> Map.delete("remaining_amount")
        |> Map.delete("payment_status")
+       |> Map.delete("payment_reference")
+       |> Map.delete("paid_at")
+       |> Map.delete("paid_by")
+       |> Map.delete("paid_by_role")
        |> Map.put("PaidAmount", 0.0)
-       |> Map.put("RemainingAmount", Decimal.to_float(Decimal.round(total, 2)))
+       |> Map.put("RemainingAmount", Decimal.to_float(total))
        |> Map.put("PaymentStatus", "Unpaid")
        |> Map.delete("PaymentReference")
        |> Map.delete("PaidAt")
@@ -134,6 +140,7 @@ defmodule Fleetms.Integrations.SharePoint.Service do
          {:ok, paid} <- decimal_amount(get_field(fields, ["PaidAmount", "paid_amount"]) || 0),
          true <- Decimal.compare(total, Decimal.new(0)) == :gt,
          true <- Decimal.compare(paid, Decimal.new(0)) == :eq,
+         true <- get_field(fields, ["PaymentStatus", "payment_status"]) != "Paid",
          actor_id when is_binary(actor_id) and actor_id != "" <-
            [Map.get(actor, :id), Map.get(actor, :email)] |> Enum.find(&(is_binary(&1) and String.trim(&1) != "")),
          role when is_atom(role) <- Map.get(actor, :role) do
