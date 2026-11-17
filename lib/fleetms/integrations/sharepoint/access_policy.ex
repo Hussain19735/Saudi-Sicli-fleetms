@@ -54,7 +54,9 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :approve_additional_repair,
              :approve_towing_invoice,
              :approve_supplier_invoice,
-             :send_invoice_to_finance
+             :send_invoice_to_finance,
+             :reject_supplier_invoice,
+             :review_supplier_invoice
            ] do
     if in_scope?(actor, target), do: :ok, else: {:error, :forbidden}
   end
@@ -78,7 +80,8 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :update,
              :approve_repair,
              :approve_additional_repair,
-             :approve_towing_invoice
+             :approve_towing_invoice,
+             :review_supplier_invoice
            ] do
     if in_scope?(actor, target), do: :ok, else: {:error, :forbidden}
   end
