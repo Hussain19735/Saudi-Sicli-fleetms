@@ -21,6 +21,38 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     AccessPolicy.authorize(actor, action, trusted_target)
   end
 
+  @doc """
+  Reads the Vehicles list and applies record-level authorization on the server.
+  Records without the scope required by the actor's role are excluded.
+  This operation is read-only and does not accept browser-supplied scope.
+  """
+  def list_vehicles_read_only(settings, actor, opts \\ []) when is_map(actor) do
+    with {:ok, vehicles} <- Repository.list(settings, :vehicles, opts) do
+      {:ok, filter_vehicle_records(vehicles, actor)}
+    end
+  end
+
+  @doc false
+  def filter_vehicle_records(records, actor) when is_list(records) and is_map(actor) do
+    Enum.filter(records, fn record ->
+      with {:ok, fields} <- work_order_fields(record),
+           vehicle_id when is_binary(vehicle_id) and vehicle_id != "" <-
+             normalize_id(Map.get(record, "id") || get_field(fields, ["VehicleId", "vehicle_id"])),
+           target <- %{
+             vehicle_id: vehicle_id,
+             project_id: normalize_id(get_field(fields, ["ProjectId", "project_id"])),
+             city_id: normalize_id(get_field(fields, ["CityId", "city_id"]))
+           },
+           :ok <- authorize(actor, :read, target) do
+        true
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  def filter_vehicle_records(_records, _actor), do: []
+
   @spec create(map(), term(), atom(), map(), map()) ::
           {:ok, map()} | {:error, term()}
   def create(settings, actor, :approval_records, fields, trusted_target)
