@@ -86,3 +86,27 @@ Do not add guessed grant tables or broaden access to make a test pass. The data 
 - Browser-supplied project/city/vehicle IDs cannot widen access.
 - SharePoint list read failures do not silently fall back to PostgreSQL in production.
 - Read-only stage issues no create/update/delete Graph requests.
+
+
+## Approved access-management decision
+
+The product owner approved the following operating rule: a Company Admin manages each user's authorized project and city scope from inside the application. These grants are maintained as trusted server-side data and are never supplied by the browser.
+
+The intended administration workflow is:
+1. Company Admin opens a user account.
+2. Admin selects the projects and/or cities that the user is allowed to access.
+3. The application persists the grants against that user and organization.
+4. The server-side actor resolver loads those grants for every protected SharePoint operation.
+5. Removing a grant takes effect on the next authorization check.
+
+Employee users remain restricted to vehicles assigned to them through the existing VehicleAssignment relationship. Project/city grants do not automatically grant employee access to every vehicle in that scope.
+
+## Implementation prerequisites discovered during repository review
+
+- The current User resource stores roles as an array (`roles`), while AccessPolicy currently accepts one canonical `role`. A deterministic multi-role resolution rule is required; it must not be guessed.
+- The existing UserProfile has a free-text city field. It is profile information only and must not be treated as an authorization grant.
+- VehicleAssignment links a user (assignee) to a vehicle and has start/end datetimes. The current resource exposes a singular `has_one` assignment from Vehicle; whether historical or only current assignments grant access must be explicit.
+- The reviewed application source does not currently expose dedicated Project or City resources in the vehicle-management domain. The source of valid project/city choices must therefore be established before building the admin grant selector.
+- The current vehicle read policy in Ash authorizes reads broadly. The SharePoint integration must enforce its own server-side scope checks and must not assume that the existing Ash vehicle policy provides equivalent row-level security.
+
+No database schema, UI, or runtime authorization behavior is changed by recording this decision.
