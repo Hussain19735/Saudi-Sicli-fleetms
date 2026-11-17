@@ -69,6 +69,76 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   end
 
   @doc """
+  Approves a received supplier invoice after maintenance review.
+  Only a scoped Maintenance Manager may perform this transition.
+  """
+  def approve_supplier_invoice(settings, actor, invoice_id) when is_binary(invoice_id) do
+    transition_supplier_invoice(settings, actor, invoice_id, :approve_supplier_invoice, ["Received", "Under Review"], "Approved")
+  end
+
+  def approve_supplier_invoice(_settings, _actor, _invoice_id), do: {:error, :invalid_invoice_id}
+
+  @doc """
+  Sends an approved supplier invoice to Finance. This is a separate transition
+  so an invoice cannot bypass Maintenance Manager approval.
+  """
+  def send_invoice_to_finance(settings, actor, invoice_id) when is_binary(invoice_id) do
+    transition_supplier_invoice(settings, actor, invoice_id, :send_invoice_to_finance, ["Approved"], "Sent to Finance")
+  end
+
+  def send_invoice_to_finance(_settings, _actor, _invoice_id), do: {:error, :invalid_invoice_id}
+
+  defp transition_supplier_invoice(settings, actor, invoice_id, action, allowed_statuses, next_status) do
+    with {:ok, invoice} <- Repository.get(settings, :invoices, invoice_id),
+         {:ok, trusted_scope} <- scope_from_item(invoice),
+         :ok <- authorize(actor, action, trusted_scope),
+         {:ok, fields} <- work_order_fields(invoice),
+         {:ok, update_fields} <- build_invoice_status_update(fields, actor, allowed_statuses, next_status),
+         etag when is_binary(etag) and etag != "" <- Map.get(invoice, "eTag") || Map.get(invoice, "@odata.etag"),
+         :ok <- Repository.update(settings, :invoices, invoice_id, update_fields, etag) do
+      :ok
+    else
+      nil -> {:error, :invoice_etag_required}
+      {:error, _} = error -> error
+      _ -> {:error, :invoice_etag_required}
+    end
+  end
+
+  @doc false
+  def build_invoice_status_update(fields, actor, allowed_statuses, next_status, at \\ DateTime.utc_now())
+
+  def build_invoice_status_update(fields, actor, allowed_statuses, next_status, at)
+      when is_map(fields) and is_map(actor) and is_list(allowed_statuses) do
+    current_status = get_field(fields, ["ApprovalStatus", "approval_status"])
+    actor_id = [Map.get(actor, :id), Map.get(actor, :email)] |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
+    role = Map.get(actor, :role)
+
+    cond do
+      current_status not in allowed_statuses -> {:error, :invalid_invoice_approval_transition}
+      not is_binary(actor_id) -> {:error, :invoice_approval_actor_identity_required}
+      not is_atom(role) -> {:error, :invoice_approval_actor_identity_required}
+      next_status == "Approved" ->
+        {:ok, %{
+          "ApprovalStatus" => "Approved",
+          "ApprovedBy" => actor_id,
+          "ApprovedByRole" => Atom.to_string(role),
+          "ApprovedAt" => DateTime.truncate(at, :second) |> DateTime.to_iso8601()
+        }}
+      next_status == "Sent to Finance" ->
+        {:ok, %{
+          "ApprovalStatus" => "Sent to Finance",
+          "SentToFinanceBy" => actor_id,
+          "SentToFinanceByRole" => Atom.to_string(role),
+          "SentToFinanceAt" => DateTime.truncate(at, :second) |> DateTime.to_iso8601()
+        }}
+      true -> {:error, :invalid_invoice_approval_transition}
+    end
+  end
+
+  def build_invoice_status_update(_fields, _actor, _allowed_statuses, _next_status, _at),
+    do: {:error, :invalid_invoice_approval_transition}
+
+  @doc """
   Records a single full invoice payment. Partial payments are intentionally not
   supported by the current SharePoint invoice contract. The record ETag is
   required so concurrent payment attempts cannot silently overwrite each other.
@@ -82,6 +152,7 @@ defmodule Fleetms.Integrations.SharePoint.Service do
            {:ok, trusted_scope} <- scope_from_item(invoice),
            :ok <- authorize(actor, :record_payment, trusted_scope),
            {:ok, invoice_fields} <- work_order_fields(invoice),
+           :ok <- ensure_invoice_sent_to_finance(invoice_fields),
            {:ok, update_fields} <- build_full_payment_update(invoice_fields, actor, payment_reference),
            etag when is_binary(etag) and etag != "" <-
              Map.get(invoice, "eTag") || Map.get(invoice, "@odata.etag"),
@@ -119,12 +190,21 @@ defmodule Fleetms.Integrations.SharePoint.Service do
        |> Map.delete("paid_at")
        |> Map.delete("paid_by")
        |> Map.delete("paid_by_role")
+       |> Map.delete("approval_status")
+       |> Map.delete("ApprovalStatus")
+       |> Map.delete("ApprovedBy")
+       |> Map.delete("ApprovedByRole")
+       |> Map.delete("ApprovedAt")
+       |> Map.delete("SentToFinanceBy")
+       |> Map.delete("SentToFinanceByRole")
+       |> Map.delete("SentToFinanceAt")
        |> Map.put("Amount", Decimal.to_float(amount))
        |> Map.put("VATAmount", Decimal.to_float(vat))
        |> Map.put("TotalAmount", Decimal.to_float(total))
        |> Map.put("PaidAmount", 0.0)
        |> Map.put("RemainingAmount", Decimal.to_float(total))
        |> Map.put("PaymentStatus", "Unpaid")
+       |> Map.put("ApprovalStatus", "Received")
        |> Map.delete("PaymentReference")
        |> Map.delete("PaidAt")
        |> Map.delete("PaidBy")
@@ -143,7 +223,8 @@ defmodule Fleetms.Integrations.SharePoint.Service do
 
   def build_full_payment_update(fields, actor, payment_reference, paid_at)
       when is_map(fields) and is_map(actor) and is_binary(payment_reference) do
-    with true <- String.trim(payment_reference) != "",
+    with true <- get_field(fields, ["ApprovalStatus", "approval_status"]) == "Sent to Finance",
+         true <- String.trim(payment_reference) != "",
          {:ok, total} <- decimal_amount(get_field(fields, ["TotalAmount", "total_amount"])),
          {:ok, paid} <- decimal_amount(get_field(fields, ["PaidAmount", "paid_amount"]) || 0),
          true <- Decimal.compare(total, Decimal.new(0)) == :gt,
@@ -163,7 +244,10 @@ defmodule Fleetms.Integrations.SharePoint.Service do
          "PaidByRole" => Atom.to_string(role)
        }}
     else
-      false -> {:error, :invoice_already_paid_or_payment_reference_required}
+      false ->
+        if get_field(fields, ["ApprovalStatus", "approval_status"]) == "Sent to Finance",
+          do: {:error, :invoice_already_paid_or_payment_reference_required},
+          else: {:error, :invoice_not_sent_to_finance}
       nil -> {:error, :invoice_payment_actor_identity_required}
       :error -> {:error, :invoice_amounts_missing_or_invalid}
       _ -> {:error, :invoice_payment_actor_identity_required}
@@ -183,7 +267,7 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     do: reject_invoice_financial_changes(fields)
 
   defp reject_invoice_financial_changes(fields) do
-    protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus)
+    protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus approvedby approvedbyrole approvedat senttofinanceby senttofinancebyrole senttofinanceat)
 
     changed? =
       Enum.any?(Map.keys(fields), fn key ->
@@ -202,11 +286,35 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   # before checking authorization.
   @spec list(map(), map(), atom(), keyword(), map()) ::
           {:ok, [map()]} | {:error, term()}
+  def list(settings, %{role: :finance} = actor, :invoices, opts, trusted_scope)
+      when is_map(trusted_scope) do
+    with :ok <- authorize(actor, :read_invoice, trusted_scope),
+         {:ok, invoices} <- Repository.list(settings, :invoices, opts) do
+      {:ok, filter_finance_invoice_records(invoices, actor)}
+    end
+  end
+
   def list(settings, actor, resource, opts, trusted_scope) when is_map(trusted_scope) do
     with :ok <- authorize(actor, :read, trusted_scope) do
       Repository.list(settings, resource, opts)
     end
   end
+
+  @doc false
+  def filter_finance_invoice_records(invoices, actor) when is_list(invoices) and is_map(actor) do
+    Enum.filter(invoices, fn invoice ->
+      with {:ok, fields} <- work_order_fields(invoice),
+           true <- get_field(fields, ["ApprovalStatus", "approval_status"]) == "Sent to Finance",
+           {:ok, scope} <- scope_from_item(invoice),
+           :ok <- authorize(actor, :read_invoice, scope) do
+        true
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  def filter_finance_invoice_records(_invoices, _actor), do: []
 
   defp validate_invoice_approval(settings, fields, trusted_target) do
     case get_field(fields, ["InvoiceType", "invoice_type"]) do
@@ -322,6 +430,12 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       false -> {:error, :towing_invoice_exceeds_approved_amount}
       :error -> {:error, :towing_invoice_amount_missing_or_invalid}
     end
+  end
+
+  defp ensure_invoice_sent_to_finance(fields) do
+    if get_field(fields, ["ApprovalStatus", "approval_status"]) == "Sent to Finance",
+      do: :ok,
+      else: {:error, :invoice_not_sent_to_finance}
   end
 
   defp work_order_fields(%{"fields" => fields}) when is_map(fields), do: {:ok, fields}
