@@ -1,7 +1,10 @@
 defmodule Fleetms.VehicleMaintenance.WorkOrderServiceTaskPart do
   use Ash.Resource,
     domain: Fleetms.VehicleMaintenance,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [
+      Ash.Policy.Authorizer
+    ]
 
   attributes do
     uuid_primary_key :id
@@ -52,6 +55,16 @@ defmodule Fleetms.VehicleMaintenance.WorkOrderServiceTaskPart do
     belongs_to :inventory_location, Fleetms.Inventory.InventoryLocation do
       domain Fleetms.Inventory
       allow_nil? true
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action([:create, :update, :destroy]) do
+      authorize_if accessing_from(Fleetms.VehicleMaintenance.WorkOrderServiceTask, :work_order_service_task_parts)
     end
   end
 
