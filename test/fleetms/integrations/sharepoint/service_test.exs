@@ -374,6 +374,18 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert {:ok, approved} =
              Service.build_invoice_status_update(%{"ApprovalStatus" => "Received"}, manager, ["Received", "Under Review"], "Approved", at)
 
+    assert {:ok, reviewed} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Received"}, manager, ["Received"], "Under Review", at)
+
+    assert reviewed["ApprovalStatus"] == "Under Review"
+    assert reviewed["ReviewedBy"] == "manager-1"
+
+    assert {:ok, rejected} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Under Review"}, manager, ["Received", "Under Review"], "Rejected", at)
+
+    assert rejected["ApprovalStatus"] == "Rejected"
+    assert rejected["RejectedBy"] == "manager-1"
+
     assert approved["ApprovalStatus"] == "Approved"
     assert approved["ApprovedBy"] == "manager-1"
     assert approved["ApprovedByRole"] == "maintenance_manager"
