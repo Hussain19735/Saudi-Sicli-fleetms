@@ -9,7 +9,7 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
 
   @company_admin_roles [:company_admin]
   @maintenance_manager_roles [:maintenance_manager]
-  @maintenance_roles [:maintenance_team]
+  @maintenance_roles [:maintenance_manager, :maintenance_team]
 
   @type actor :: %{
           required(:role) => atom(),
@@ -39,8 +39,8 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
       do: :ok
 
   # Maintenance managers may approve maintenance operations but cannot manage
-  # users or global settings. Their SharePoint operational access is global.
-  def authorize(%{role: role}, action, _target)
+  # users or global settings. Operational access remains project/city scoped.
+  def authorize(%{role: role} = actor, action, target)
       when role in @maintenance_manager_roles and action in [
              :read,
              :create,
@@ -48,8 +48,9 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :approve_repair,
              :approve_additional_repair,
              :approve_towing_invoice
-           ],
-      do: :ok
+           ] do
+    if in_scope?(actor, target), do: :ok, else: {:error, :forbidden}
+  end
 
   def authorize(%{role: role} = actor, action, target)
       when role in [:admin, :technician, :driver] do
