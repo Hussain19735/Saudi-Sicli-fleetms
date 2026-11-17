@@ -51,9 +51,7 @@ defmodule Fleetms.AccountsFixtures do
       |> Ash.Changeset.set_context(%{private: %{ash_authentication?: true}})
       |> Ash.create()
 
-    user = Ash.load!(user, [:full_name, :organization])
-    Fleetms.FeatureFlags.Accounts.enable_user_management(user.organization)
-    user
+    Ash.load!(user, [:full_name, :organization])
   end
 
   def org_user_fixture(attrs \\ %{}) do
