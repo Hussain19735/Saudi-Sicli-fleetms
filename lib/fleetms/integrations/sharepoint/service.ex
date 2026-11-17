@@ -82,7 +82,10 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       "Repair" ->
         validate_repair_invoice_approval(settings, fields, trusted_target)
 
-      type when type in ["Spare Parts", "Towing", "Periodic Inspection", "Tires", "Other"] ->
+      "Towing" ->
+        validate_towing_invoice_approval(settings, fields, trusted_target)
+
+      type when type in ["Spare Parts", "Periodic Inspection", "Tires", "Other"] ->
         :ok
 
       _ ->
@@ -108,6 +111,85 @@ defmodule Fleetms.Integrations.SharePoint.Service do
 
       _ ->
         {:error, :work_order_id_required}
+    end
+  end
+
+  defp validate_towing_invoice_approval(settings, fields, trusted_target) do
+    case get_field(fields, ["BreakdownReportId", "breakdown_report_id"]) do
+      report_id when is_binary(report_id) and report_id != "" ->
+        with {:ok, report} <- Repository.get(settings, :breakdown_reports, report_id),
+             {:ok, report_scope} <- scope_from_item(report),
+             :ok <- ensure_scope_match(report_scope, trusted_target),
+             {:ok, approved_amount} <- approved_towing_amount(settings, report_id, report_scope) do
+          validate_towing_invoice_amount(
+            get_field(fields, ["TotalAmount", "total_amount"]),
+            approved_amount
+          )
+        end
+
+      _ ->
+        {:error, :breakdown_report_id_required}
+    end
+  end
+
+  defp approved_towing_amount(settings, report_id, report_scope) do
+    with {:ok, records} <- Repository.list(settings, :approval_records, []) do
+      result =
+        Enum.reduce_while(records, {:ok, nil}, fn record, {:ok, highest} ->
+          if approved_towing_invoice_for?(record, report_id, report_scope) do
+            amount =
+              record
+              |> Map.get("fields", %{})
+              |> get_field(["ApprovedAmount", "approved_amount"])
+
+            case decimal_amount(amount) do
+              {:ok, decimal} ->
+                highest =
+                  if is_nil(highest) or Decimal.compare(decimal, highest) == :gt,
+                    do: decimal,
+                    else: highest
+
+                {:cont, {:ok, highest}}
+
+              :error ->
+                {:halt, {:error, :invalid_towing_approval_amount}}
+            end
+          else
+            {:cont, {:ok, highest}}
+          end
+        end)
+
+      case result do
+        {:ok, nil} -> {:error, :towing_invoice_approval_required}
+        other -> other
+      end
+    end
+  end
+
+  defp approved_towing_invoice_for?(%{"fields" => fields}, report_id, report_scope)
+       when is_map(fields) do
+    get_field(fields, ["ParentRecordId", "parent_record_id"]) == report_id and
+      get_field(fields, ["ApprovalType", "approval_type"]) == "Towing Invoice" and
+      get_field(fields, ["Decision", "decision"]) == "Approved" and
+      Enum.all?([:project_id, :city_id, :vehicle_id], fn key ->
+        case Map.get(report_scope, key) do
+          nil -> true
+          value -> get_field(fields, [scope_field_name(key)]) == value
+        end
+      end)
+  end
+
+  defp approved_towing_invoice_for?(_record, _report_id, _report_scope), do: false
+
+  @doc false
+  def validate_towing_invoice_amount(invoice_total, approved_amount) do
+    with {:ok, invoice} <- decimal_amount(invoice_total),
+         {:ok, approved} <- decimal_amount(approved_amount),
+         true <- Decimal.compare(invoice, approved) in [:lt, :eq] do
+      :ok
+    else
+      false -> {:error, :towing_invoice_exceeds_approved_amount}
+      :error -> {:error, :towing_invoice_amount_missing_or_invalid}
     end
   end
 
