@@ -30,6 +30,38 @@ defmodule Fleetms.Integrations.SharePoint.ConfigTest do
     assert message =~ "SHAREPOINT_SITE_ID"
   end
 
+  test "accepts the first-stage vehicle connection without later module lists or a document drive" do
+    values = %{
+      "FLEET_DATA_ADAPTER" => "sharepoint",
+      "MICROSOFT_TENANT_ID" => "tenant",
+      "MICROSOFT_CLIENT_ID" => "client",
+      "MICROSOFT_CLIENT_SECRET" => "secret",
+      "SHAREPOINT_SITE_ID" => "site",
+      "SHAREPOINT_LIST_VEHICLES_ID" => "vehicles"
+    }
+
+    assert {:ok, settings} = Config.load(env(values), :prod)
+    assert settings.adapter == :sharepoint
+    assert settings.site_id == "site"
+    assert settings.drive_id == nil
+    assert settings.list_ids.vehicles == "vehicles"
+    assert settings.list_ids.drivers == nil
+    assert settings.list_ids.invoices == nil
+  end
+
+  test "requires the vehicles list for the first SharePoint rollout stage" do
+    values = %{
+      "FLEET_DATA_ADAPTER" => "sharepoint",
+      "MICROSOFT_TENANT_ID" => "tenant",
+      "MICROSOFT_CLIENT_ID" => "client",
+      "MICROSOFT_CLIENT_SECRET" => "secret",
+      "SHAREPOINT_SITE_ID" => "site"
+    }
+
+    assert {:error, message} = Config.load(env(values), :prod)
+    assert message =~ "SHAREPOINT_LIST_VEHICLES_ID"
+  end
+
   test "loads SharePoint identifiers from environment values" do
     values = %{
       "FLEET_DATA_ADAPTER" => "sharepoint",
