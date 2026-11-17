@@ -64,7 +64,7 @@ defmodule FleetmsWeb.UserLive.ListTest do
           roles: [:fleet_manager, :technician, :driver]
         })
 
-      {:ok, user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users")
@@ -96,14 +96,15 @@ defmodule FleetmsWeb.UserLive.ListTest do
           roles: [:fleet_manager, :technician, :driver]
         })
 
-      {:ok, user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users")
 
       render_async(user_list_live)
+      html = render(user_list_live)
 
-      assert html =~ "All Users"
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
       assert html =~ user.full_name
       refute has_element?(user_list_live, ~s{[href="/users/#{admin_user.id}/edit"]}, "Edit User")
