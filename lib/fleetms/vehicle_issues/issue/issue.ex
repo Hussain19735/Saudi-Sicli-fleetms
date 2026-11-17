@@ -6,7 +6,7 @@ defmodule Fleetms.VehicleIssues.Issue do
       Ash.Policy.Authorizer
     ]
 
-  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsTechnician}
+  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
   require Ash.Query
 
   attributes do
@@ -509,24 +509,33 @@ defmodule Fleetms.VehicleIssues.Issue do
     end
 
     policy action_type(:read) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
+      authorize_if relates_to_actor_via(:reported_by)
     end
 
     policy action(:create) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if IsTechnician
       authorize_if IsDriver
     end
 
     policy action([:save_issue_photos, :maybe_delete_existing_photos]) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action(:update) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
-      authorize_if relates_to_actor_via(:reported_by)
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action([
@@ -537,7 +546,7 @@ defmodule Fleetms.VehicleIssues.Issue do
     end
 
     policy action(:resolve_from_work_order) do
-      authorize_if always()
+      authorize_if accessing_from(Fleetms.VehicleMaintenance.WorkOrder, :issues)
     end
 
     policy action([
@@ -549,6 +558,7 @@ defmodule Fleetms.VehicleIssues.Issue do
            ]) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
     end
   end
 
