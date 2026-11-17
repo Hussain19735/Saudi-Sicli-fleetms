@@ -27,18 +27,18 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       when is_map(fields) and is_map(trusted_target) do
     with {:ok, approval_action} <- approval_action(fields),
          :ok <- authorize(actor, approval_action, trusted_target),
-         :ok <- validate_create_scope(fields, trusted_target),
+         {:ok, scoped_fields} <- stamp_trusted_scope(fields, trusted_target),
          :ok <- validate_approval_record(fields),
          {:ok, audit_fields} <- approval_audit_fields(actor) do
-      Repository.create(settings, :approval_records, Map.merge(fields, audit_fields))
+      Repository.create(settings, :approval_records, Map.merge(scoped_fields, audit_fields))
     end
   end
 
   def create(settings, actor, resource, fields, trusted_target)
       when is_map(fields) and is_map(trusted_target) do
     with :ok <- authorize(actor, :create, trusted_target),
-         :ok <- validate_create_scope(fields, trusted_target) do
-      Repository.create(settings, resource, fields)
+         {:ok, scoped_fields} <- stamp_trusted_scope(fields, trusted_target) do
+      Repository.create(settings, resource, scoped_fields)
     end
   end
 
@@ -148,26 +148,45 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   defp normalize_id(value) when is_integer(value), do: Integer.to_string(value)
   defp normalize_id(_value), do: nil
 
-  defp validate_create_scope(fields, trusted_target) do
+  @doc false
+  def stamp_trusted_scope(fields, trusted_target)
+      when is_map(fields) and is_map(trusted_target) do
     mappings = [
-      {"ProjectId", :project_id},
-      {"project_id", :project_id},
-      {"CityId", :city_id},
-      {"city_id", :city_id},
-      {"VehicleId", :vehicle_id},
-      {"vehicle_id", :vehicle_id}
+      {"ProjectId", "project_id"},
+      {"CityId", "city_id"},
+      {"VehicleId", "vehicle_id"}
     ]
 
-    mismatch? =
-      Enum.any?(mappings, fn {field, scope_key} ->
-        case Map.fetch(fields, field) do
-          {:ok, value} -> value != Map.get(trusted_target, scope_key)
-          :error -> false
-        end
-      end)
+    Enum.reduce_while(mappings, {:ok, fields}, fn {sharepoint_field, target_key}, {:ok, acc} ->
+      submitted =
+        [Map.get(acc, sharepoint_field), Map.get(acc, target_key)]
+        |> Enum.reject(&is_nil/1)
 
-    if mismatch?, do: {:error, :submitted_scope_does_not_match_trusted_scope}, else: :ok
+      trusted_value = Map.get(trusted_target, String.to_existing_atom(target_key))
+
+      cond do
+        is_nil(trusted_value) and submitted != [] ->
+          {:halt, {:error, :submitted_scope_does_not_match_trusted_scope}}
+
+        is_nil(trusted_value) ->
+          {:cont, {:ok, Map.delete(acc, target_key)}}
+
+        Enum.any?(submitted, &(&1 != trusted_value)) ->
+          {:halt, {:error, :submitted_scope_does_not_match_trusted_scope}}
+
+        true ->
+          scoped =
+            acc
+            |> Map.delete(target_key)
+            |> Map.put(sharepoint_field, trusted_value)
+
+          {:cont, {:ok, scoped}}
+      end
+    end)
   end
+
+  def stamp_trusted_scope(_fields, _trusted_target),
+    do: {:error, :invalid_trusted_scope}
 
   defp reject_scope_changes(fields) do
     changed_scope_field? =
