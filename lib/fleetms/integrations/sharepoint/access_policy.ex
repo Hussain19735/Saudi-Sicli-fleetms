@@ -10,6 +10,7 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
   @company_admin_roles [:company_admin]
   @maintenance_manager_roles [:maintenance_manager]
   @maintenance_roles [:maintenance_manager, :maintenance_team]
+  @finance_roles [:finance]
 
   @type actor :: %{
           required(:role) => atom(),
@@ -30,11 +31,17 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :read,
              :create,
              :update,
-             :record_payment,
              :manage_users,
              :manage_settings
            ],
       do: :ok
+
+  # Finance can read and settle supplier invoices only, within assigned scope.
+  # It cannot create, edit, or approve operational records.
+  def authorize(%{role: role} = actor, action, target)
+      when role in @finance_roles and action in [:read_invoice, :record_payment] do
+    if in_scope?(actor, target), do: :ok, else: {:error, :forbidden}
+  end
 
   # Maintenance managers may approve maintenance operations but cannot manage
   # users or global settings. Operational access remains project/city scoped.
@@ -45,7 +52,9 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :update,
              :approve_repair,
              :approve_additional_repair,
-             :approve_towing_invoice
+             :approve_towing_invoice,
+             :approve_supplier_invoice,
+             :send_invoice_to_finance
            ] do
     if in_scope?(actor, target), do: :ok, else: {:error, :forbidden}
   end
