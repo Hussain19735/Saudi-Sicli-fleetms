@@ -42,7 +42,7 @@ defmodule Fleetms.Integrations.WhatsApp.ClientTest do
 
   test "does not make a request for an invalid recipient or template" do
     assert {:error, :invalid_recipient_phone} =
-             Client.send_template(@settings, "0500000000", "vehicle_expiry_notice", "ar")
+             Client.send_template(@settings, "12345", "vehicle_expiry_notice", "ar")
 
     assert {:error, :invalid_template_name} =
              Client.send_template(@settings, "+966500000000", "Vehicle Expiry", "ar")
