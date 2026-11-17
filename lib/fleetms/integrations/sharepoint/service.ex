@@ -25,7 +25,8 @@ defmodule Fleetms.Integrations.SharePoint.Service do
           {:ok, map()} | {:error, term()}
   def create(settings, actor, resource, fields, trusted_target)
       when is_map(fields) and is_map(trusted_target) do
-    with :ok <- authorize(actor, :create, trusted_target) do
+    with :ok <- authorize(actor, :create, trusted_target),
+         :ok <- validate_create_scope(fields, trusted_target) do
       Repository.create(settings, resource, fields)
     end
   end
@@ -46,6 +47,27 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     with :ok <- authorize(actor, :read, trusted_scope) do
       Repository.list(settings, resource, opts)
     end
+  end
+
+  defp validate_create_scope(fields, trusted_target) do
+    mappings = [
+      {"ProjectId", :project_id},
+      {"project_id", :project_id},
+      {"CityId", :city_id},
+      {"city_id", :city_id},
+      {"VehicleId", :vehicle_id},
+      {"vehicle_id", :vehicle_id}
+    ]
+
+    mismatch? =
+      Enum.any?(mappings, fn {field, scope_key} ->
+        case Map.fetch(fields, field) do
+          {:ok, value} -> value != Map.get(trusted_target, scope_key)
+          :error -> false
+        end
+      end)
+
+    if mismatch?, do: {:error, :submitted_scope_does_not_match_trusted_scope}, else: :ok
   end
 
   defp reject_scope_changes(fields) do
