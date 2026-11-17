@@ -7,6 +7,7 @@ defmodule Fleetms.Inventory.PartInventoryLocation do
     ]
 
   require Ash.Query
+  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
 
   @default_listing_limit 20
   @default_sorting_params %{sort_by: :desc, sort_order: :created_at}
@@ -49,8 +50,16 @@ defmodule Fleetms.Inventory.PartInventoryLocation do
       authorize_if always()
     end
 
-    policy action([:create, :update, :destroy, :update_stock_quantity]) do
-      authorize_if always()
+    policy action([:create, :update, :destroy]) do
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+    end
+
+    policy action(:update_stock_quantity) do
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
   end
 
