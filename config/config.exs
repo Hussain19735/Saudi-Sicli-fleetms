@@ -109,13 +109,15 @@ config :fun_with_flags, :cache_bust_notifications,
 
 config :fleetms, Oban,
   engine: Oban.Engines.Basic,
-  queues: [default: 10, mailers: 20, vehicle_general_reminders: 50],
+  queues: [default: 10, mailers: 20, vehicle_general_reminders: 50, whatsapp_notifications: 10],
   repo: Fleetms.Repo,
   plugins: [
     {Oban.Plugins.Cron,
      crontab: [
        # Runs Daily
-       {"0 0 * * *", Fleetms.VehicleManagement.Workers.UpdateVehicleGeneralReminderStatuses}
+       {"0 0 * * *", Fleetms.VehicleManagement.Workers.UpdateVehicleGeneralReminderStatuses},
+       # Runs daily at 08:00 Asia/Riyadh (05:00 UTC); WhatsApp remains opt-in.
+       {"0 5 * * *", Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries}
      ]}
   ]
 
