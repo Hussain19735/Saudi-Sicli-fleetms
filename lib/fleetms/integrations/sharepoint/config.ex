@@ -7,17 +7,22 @@ defmodule Fleetms.Integrations.SharePoint.Config do
   environment variables and must never be committed to source control.
   """
 
+  # The first rollout stage reads the Vehicles list only. Other list IDs and
+  # the document-library drive are optional until their modules are connected.
   @required_sharepoint_keys ~w(
     MICROSOFT_TENANT_ID
     MICROSOFT_CLIENT_ID
     MICROSOFT_CLIENT_SECRET
     SHAREPOINT_SITE_ID
+    SHAREPOINT_LIST_VEHICLES_ID
+  )
+
+  @optional_sharepoint_keys ~w(
     SHAREPOINT_DRIVE_ID
     SHAREPOINT_LIST_CITIES_ID
     SHAREPOINT_LIST_PROJECTS_ID
     SHAREPOINT_LIST_WORKSHOPS_ID
     SHAREPOINT_LIST_DRIVERS_ID
-    SHAREPOINT_LIST_VEHICLES_ID
     SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID
     SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID
     SHAREPOINT_LIST_WORK_ORDERS_ID
@@ -64,12 +69,17 @@ defmodule Fleetms.Integrations.SharePoint.Config do
   end
 
   defp load_sharepoint(get_env) do
-    values = Map.new(@required_sharepoint_keys, fn key -> {key, get_env.(key)} end)
+    values =
+      Map.new(@required_sharepoint_keys ++ @optional_sharepoint_keys, fn key ->
+        {key, get_env.(key)}
+      end)
 
     missing =
-      values
-      |> Enum.filter(fn {_key, value} -> is_nil(value) or String.trim(value) == "" end)
-      |> Enum.map(&elem(&1, 0))
+      @required_sharepoint_keys
+      |> Enum.filter(fn key ->
+        value = values[key]
+        is_nil(value) or String.trim(value) == ""
+      end)
 
     case missing do
       [] ->
@@ -80,20 +90,20 @@ defmodule Fleetms.Integrations.SharePoint.Config do
            client_id: values["MICROSOFT_CLIENT_ID"],
            client_secret: values["MICROSOFT_CLIENT_SECRET"],
            site_id: values["SHAREPOINT_SITE_ID"],
-           drive_id: values["SHAREPOINT_DRIVE_ID"],
+           drive_id: blank_to_nil(values["SHAREPOINT_DRIVE_ID"]),
            list_ids: %{
-             cities: values["SHAREPOINT_LIST_CITIES_ID"],
-             projects: values["SHAREPOINT_LIST_PROJECTS_ID"],
-             workshops: values["SHAREPOINT_LIST_WORKSHOPS_ID"],
-             drivers: values["SHAREPOINT_LIST_DRIVERS_ID"],
+             cities: blank_to_nil(values["SHAREPOINT_LIST_CITIES_ID"]),
+             projects: blank_to_nil(values["SHAREPOINT_LIST_PROJECTS_ID"]),
+             workshops: blank_to_nil(values["SHAREPOINT_LIST_WORKSHOPS_ID"]),
+             drivers: blank_to_nil(values["SHAREPOINT_LIST_DRIVERS_ID"]),
              vehicles: values["SHAREPOINT_LIST_VEHICLES_ID"],
-             vehicle_assignments: values["SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID"],
-             breakdown_reports: values["SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID"],
-             work_orders: values["SHAREPOINT_LIST_WORK_ORDERS_ID"],
-             invoices: values["SHAREPOINT_LIST_INVOICES_ID"],
-             approval_records: values["SHAREPOINT_LIST_APPROVAL_RECORDS_ID"],
-             vehicle_history: values["SHAREPOINT_LIST_VEHICLE_HISTORY_ID"],
-             audit_log: values["SHAREPOINT_LIST_AUDIT_LOG_ID"]
+             vehicle_assignments: blank_to_nil(values["SHAREPOINT_LIST_VEHICLE_ASSIGNMENTS_ID"]),
+             breakdown_reports: blank_to_nil(values["SHAREPOINT_LIST_BREAKDOWN_REPORTS_ID"]),
+             work_orders: blank_to_nil(values["SHAREPOINT_LIST_WORK_ORDERS_ID"]),
+             invoices: blank_to_nil(values["SHAREPOINT_LIST_INVOICES_ID"]),
+             approval_records: blank_to_nil(values["SHAREPOINT_LIST_APPROVAL_RECORDS_ID"]),
+             vehicle_history: blank_to_nil(values["SHAREPOINT_LIST_VEHICLE_HISTORY_ID"]),
+             audit_log: blank_to_nil(values["SHAREPOINT_LIST_AUDIT_LOG_ID"])
            }
          }}
 
@@ -101,6 +111,15 @@ defmodule Fleetms.Integrations.SharePoint.Config do
         {:error, "Missing SharePoint settings: " <> Enum.join(keys, ", ")}
     end
   end
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp blank_to_nil(_value), do: nil
 
   defp empty_settings(adapter) do
     %{
