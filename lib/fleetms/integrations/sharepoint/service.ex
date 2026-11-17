@@ -31,6 +31,18 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     end
   end
 
+  @spec update_existing(map(), map(), atom(), String.t(), map(), String.t() | nil) ::
+          :ok | {:error, term()}
+  def update_existing(settings, actor, resource, item_id, fields, etag)
+      when is_binary(item_id) and is_map(fields) do
+    with {:ok, item} <- Repository.get(settings, resource, item_id),
+         {:ok, trusted_scope} <- scope_from_item(item),
+         :ok <- authorize(actor, :update, trusted_scope),
+         :ok <- reject_scope_changes(fields) do
+      Repository.update(settings, resource, item_id, fields, etag)
+    end
+  end
+
   @spec update(map(), term(), atom(), String.t(), map(), String.t() | nil, map()) ::
           :ok | {:error, term()}
   def update(settings, actor, resource, item_id, fields, etag, trusted_existing_target)
@@ -48,6 +60,34 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       Repository.list(settings, resource, opts)
     end
   end
+
+  defp scope_from_item(%{"fields" => fields}) when is_map(fields) do
+    project_id = get_field(fields, ["ProjectId", "project_id"])
+    city_id = get_field(fields, ["CityId", "city_id"])
+    vehicle_id = get_field(fields, ["VehicleId", "vehicle_id"])
+
+    scope = %{
+      project_id: normalize_id(project_id),
+      city_id: normalize_id(city_id),
+      vehicle_id: normalize_id(vehicle_id)
+    }
+
+    if Enum.any?(Map.values(scope), &is_binary/1) do
+      {:ok, scope}
+    else
+      {:error, :record_scope_missing}
+    end
+  end
+
+  defp scope_from_item(_item), do: {:error, :invalid_sharepoint_record}
+
+  defp get_field(fields, names) do
+    Enum.find_value(names, fn name -> Map.get(fields, name) end)
+  end
+
+  defp normalize_id(value) when is_binary(value) and value != "", do: value
+  defp normalize_id(value) when is_integer(value), do: Integer.to_string(value)
+  defp normalize_id(_value), do: nil
 
   defp validate_create_scope(fields, trusted_target) do
     mappings = [
