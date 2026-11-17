@@ -230,6 +230,10 @@ defmodule FleetmsWeb.UserLive.ListTest do
 
       assert_patch(user_list_live, ~p"/users")
 
+      # The listing is refreshed asynchronously by handle_params after the
+      # patch; wait for that query before asserting the updated email.
+      render_async(user_list_live)
+
       html = render(user_list_live)
       assert html =~ "User updated successfully"
       assert html =~ @update_email_attrs.email
