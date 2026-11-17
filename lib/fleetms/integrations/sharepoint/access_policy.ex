@@ -24,6 +24,18 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
         }
 
   @spec authorize(actor(), atom(), target()) :: :ok | {:error, :forbidden}
+  def authorize(%{role: role} = actor, action, target)
+      when role in [:admin, :technician, :driver] do
+    canonical_role =
+      case role do
+        :admin -> :company_admin
+        :technician -> :maintenance_team
+        :driver -> :employee
+      end
+
+    authorize(Map.put(actor, :role, canonical_role), action, target)
+  end
+
   def authorize(%{role: role}, action, _target)
       when role in @manager_roles and action in [
              :read,
