@@ -120,7 +120,10 @@ defmodule FleetmsWeb.WorkOrderLive.Detail do
 
   @impl true
   def handle_event("add_issue", %{"issue_id" => issue_id}, socket) do
-    issue = Fleetms.VehicleIssues.Issue.get_by_id!(issue_id)
+    %{tenant: tenant, current_user: actor} = socket.assigns
+
+    issue =
+      Fleetms.VehicleIssues.Issue.get_by_id!(issue_id, tenant: tenant, actor: actor)
 
     form =
       AshPhoenix.Form.add_form(socket.assigns.form, "work_order[issues]",
