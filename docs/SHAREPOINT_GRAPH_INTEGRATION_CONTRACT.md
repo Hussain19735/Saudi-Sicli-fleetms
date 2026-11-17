@@ -21,13 +21,14 @@ Provide configuration through deployment secrets/environment variables only:
 | MICROSOFT_CLIENT_ID | Entra application identifier supplied by IT |
 | MICROSOFT_CLIENT_SECRET or certificate reference | Server-side credential, only if approved OAuth flow requires it |
 | SHAREPOINT_SITE_ID | Provisioned SharePoint site identifier |
-| SHAREPOINT_DRIVE_ID | Document library drive identifier |
-| SHAREPOINT_LIST_*_ID | Provisioned list identifiers, one setting per list |
+| SHAREPOINT_DRIVE_ID | Document library drive identifier; required when document upload is enabled |
+| SHAREPOINT_LIST_VEHICLES_ID | Vehicles list identifier; required for the first rollout stage |
+| Other SHAREPOINT_LIST_*_ID values | Additional list identifiers; configured as each module is connected |
 
-Do not add real values to tracked config files. Validate required settings at startup. If FLEET_DATA_ADAPTER=sharepoint and any required setting is missing, stop startup with a clear configuration error. Demo mode must be explicitly selected and visibly identified in the UI.
+Do not add real values to tracked config files. Validate the settings required by the active rollout stage at startup. The first stage requires the Entra credentials, site ID, and Vehicles list ID only; the document-library drive and other list IDs remain optional until their modules are enabled. If a required setting for the active stage is missing, stop startup with a clear configuration error. Demo mode must be explicitly selected and visibly identified in the UI.
 
 ## Adapter boundary
-Application/business logic must depend on a storage behaviour, not call Microsoft Graph directly from LiveViews.
+Application/business logic must depend on a storage behaviour, not call Microsoft Graph directly from LiveViews. Roll out one resource at a time: begin with read-only Vehicles access, then enable vehicle writes and document-library operations only after the corresponding permissions and configuration have been verified. A missing ID for a later module must fail that module's operation clearly without preventing the first-stage Vehicles connection.
 
 Suggested operations:
 - list(resource, filters, paging)
