@@ -42,12 +42,15 @@ defmodule FleetmsWeb.UserLive.ListTest do
     setup [:create_initial_org_and_user]
 
     test "lists all users", %{conn: conn, admin_user: admin_user} do
-      {:ok, _user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(admin_user)
         |> live(~p"/users")
 
-      assert html =~ "All Users"
+      render_async(user_list_live)
+      html = render(user_list_live)
+
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
     end
 
@@ -67,8 +70,9 @@ defmodule FleetmsWeb.UserLive.ListTest do
         |> live(~p"/users")
 
       render_async(user_list_live)
+      html = render(user_list_live)
 
-      assert html =~ "All Users"
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
       assert html =~ user.full_name
       refute has_element?(user_list_live, "button", "Add User")
