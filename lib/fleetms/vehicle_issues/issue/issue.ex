@@ -504,8 +504,11 @@ defmodule Fleetms.VehicleIssues.Issue do
   end
 
   policies do
-    policy action_type(:action) do
-      authorize_if always()
+    policy action(:get_dashboard_stats) do
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action_type(:read) do
