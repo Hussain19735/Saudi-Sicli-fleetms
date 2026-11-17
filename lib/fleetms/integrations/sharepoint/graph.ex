@@ -52,6 +52,23 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
     end
   end
 
+  @spec get_item(Config.settings(), String.t(), String.t()) ::
+          {:ok, map()} | graph_error()
+  def get_item(settings, list_id, item_id) do
+    url =
+      "#{@graph_base}/sites/#{segment(settings.site_id)}/lists/#{segment(list_id)}/items/#{segment(item_id)}?\\$expand=fields"
+
+    with {:ok, token} <- access_token(settings),
+         {:ok, %Req.Response{body: body}} <- graph_get(url, token),
+         true <- is_map(body) do
+      {:ok, body}
+    else
+      {:ok, _response} -> {:error, {:graph_request_failed, :invalid_response}}
+      {:error, _} = error -> error
+      false -> {:error, {:graph_request_failed, :invalid_response}}
+    end
+  end
+
   @spec create_item(Config.settings(), String.t(), map()) ::
           {:ok, map()} | graph_error()
   def create_item(settings, list_id, fields) when is_map(fields) do
