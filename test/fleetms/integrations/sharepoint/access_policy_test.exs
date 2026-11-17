@@ -14,13 +14,16 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicyTest do
     assert :ok = AccessPolicy.authorize(actor, :approve_towing_invoice, %{})
   end
 
-  test "maintenance manager can approve repairs but cannot manage users or settings" do
-    actor = %{role: :maintenance_manager}
+  test "maintenance manager can approve only within assigned scope and cannot manage users" do
+    actor = %{role: :maintenance_manager, project_ids: ["P-1"], city_ids: ["JED"]}
+    target = %{project_id: "P-1", city_id: "JED"}
 
-    assert :ok = AccessPolicy.authorize(actor, :approve_repair, %{})
-    assert :ok = AccessPolicy.authorize(actor, :approve_towing_invoice, %{})
-    assert {:error, :forbidden} = AccessPolicy.authorize(actor, :manage_users, %{})
-    assert {:error, :forbidden} = AccessPolicy.authorize(actor, :manage_settings, %{})
+    assert :ok = AccessPolicy.authorize(actor, :approve_repair, target)
+    assert :ok = AccessPolicy.authorize(actor, :approve_towing_invoice, target)
+    assert {:error, :forbidden} =
+             AccessPolicy.authorize(actor, :approve_repair, %{project_id: "P-2", city_id: "JED"})
+    assert {:error, :forbidden} = AccessPolicy.authorize(actor, :manage_users, target)
+    assert {:error, :forbidden} = AccessPolicy.authorize(actor, :manage_settings, target)
   end
 
   test "maintenance team can approve only within assigned project and city" do
