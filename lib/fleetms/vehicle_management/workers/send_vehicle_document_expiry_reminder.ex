@@ -111,7 +111,6 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
              args["days_before"] in [30, 15] do
           {:ok,
            %{
-             document_type: type,
              expiry_date: expiry_date,
              days_before: args["days_before"],
              arabic_label: arabic_label,
