@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/ui-dashboard-redesign
+      - feature/rbac-and-fleet-workflows
   pull_request:
     branches:
       - main
