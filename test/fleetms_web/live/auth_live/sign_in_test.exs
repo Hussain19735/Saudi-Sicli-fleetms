@@ -1,8 +1,13 @@
 defmodule FleetmsWeb.SignInTest do
-  use FleetmsWeb.ConnCase, async: true
+  use FleetmsWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Fleetms.AccountsFixtures
+
+  setup do
+    Fleetms.FeatureFlags.Accounts.enable_user_registration()
+    :ok
+  end
 
   describe "Log in page" do
     test "renders log in page", %{conn: conn} do

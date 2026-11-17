@@ -67,6 +67,35 @@ window.addEventListener("phx:page-loading-stop", _info => {
 // window.document.addEventListener("phx:page-loading-stop", _info => console.log("Loaded"))
 
 
+
+const applyInterfaceLanguage = (language) => {
+  const isArabic = language === "ar";
+  document.documentElement.lang = isArabic ? "ar" : "en";
+  document.documentElement.dir = isArabic ? "rtl" : "ltr";
+  document.documentElement.classList.toggle("locale-ar", isArabic);
+  document.documentElement.classList.toggle("locale-en", !isArabic);
+  document.querySelectorAll("[data-language-label]").forEach((label) => {
+    label.textContent = isArabic ? "English" : "العربية";
+  });
+};
+
+const savedInterfaceLanguage = localStorage.getItem("fleet-interface-language");
+applyInterfaceLanguage(savedInterfaceLanguage === "ar" ? "ar" : "en");
+
+document.addEventListener("click", (event) => {
+  const languageButton = event.target.closest("[data-language-toggle]");
+  if (languageButton) {
+    const nextLanguage = document.documentElement.lang === "ar" ? "en" : "ar";
+    localStorage.setItem("fleet-interface-language", nextLanguage);
+    applyInterfaceLanguage(nextLanguage);
+    return;
+  }
+
+  const printButton = event.target.closest("[data-print-page]");
+  if (!printButton) return;
+  window.print();
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 

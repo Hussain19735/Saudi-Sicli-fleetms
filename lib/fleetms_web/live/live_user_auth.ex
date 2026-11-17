@@ -116,7 +116,17 @@ defmodule FleetmsWeb.LiveUserAuth do
   end
 
   def on_mount(:user_registration, _params, _session, socket) do
-    if FeatureFlags.Accounts.user_registration_enabled?(socket.assigns.current_user.organization) do
+    registration_enabled? =
+      case socket.assigns[:current_user] do
+        nil ->
+          FeatureFlags.Accounts.user_registration_enabled?()
+
+        user ->
+          user = Ash.load!(user, :organization)
+          FeatureFlags.Accounts.user_registration_enabled?(user.organization)
+      end
+
+    if registration_enabled? do
       {:cont, socket}
     else
       socket = LiveToast.put_toast(socket, :error, "Feature Disabled")

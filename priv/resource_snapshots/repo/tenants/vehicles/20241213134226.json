@@ -87,6 +87,36 @@
       "primary_key?": false,
       "references": null,
       "size": null,
+      "source": "periodic_inspection_expiry_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "primary_key?": false,
+      "references": null,
+      "size": null,
+      "source": "insurance_expiry_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "primary_key?": false,
+      "references": null,
+      "size": null,
+      "source": "registration_expiry_date",
+      "type": "date"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "primary_key?": false,
+      "references": null,
+      "size": null,
       "source": "vin",
       "type": "text"
     },

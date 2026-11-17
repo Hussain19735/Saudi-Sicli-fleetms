@@ -21,6 +21,15 @@ swoosh_configs =
 config :fleetms, Fleetms.Mailer, swoosh_configs
 config :swoosh, :api_client, Swoosh.ApiClient.Req
 
+# WhatsApp is an optional server-side integration. Missing credentials keep it disabled.
+whatsapp_settings =
+  case Fleetms.Integrations.WhatsApp.Config.load(&System.get_env/1) do
+    {:ok, settings} -> settings
+    {:error, reason} -> raise "WhatsApp configuration error: #{reason}"
+  end
+
+config :fleetms, :whatsapp, whatsapp_settings
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -45,6 +54,14 @@ end
 #   app_domain: env!("PHX_HOST", :string, "example.com")
 
 if config_env() == :prod do
+  sharepoint_settings =
+    case Fleetms.Integrations.SharePoint.Config.load(&System.get_env/1, :prod) do
+      {:ok, settings} -> settings
+      {:error, reason} -> raise "Fleet data adapter configuration error: #{reason}"
+    end
+
+  config :fleetms, :fleet_data_adapter, sharepoint_settings
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

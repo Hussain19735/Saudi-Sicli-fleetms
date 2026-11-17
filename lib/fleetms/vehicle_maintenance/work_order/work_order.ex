@@ -9,7 +9,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
   # TODO: In the future, allow users to create a completed work order, meaning they can select status, date and time completed, then
   # the added line items e.g issues, service reminders will be resolved and reset respectively
 
-  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsTechnician}
+  alias Fleetms.Accounts.User.Policies.{IsAdmin, IsFleetManager, IsMaintenanceManager, IsTechnician}
   require Ash.Query
 
   attributes do
@@ -129,44 +129,58 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
   end
 
   policies do
-    policy action_type(:action) do
-      authorize_if always()
+    policy action(:get_dashboard_stats) do
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action_type(:read) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if IsTechnician
     end
 
     policy action(:create) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if IsTechnician
     end
 
     policy action(:update) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if relates_to_actor_via(:assigned_to)
     end
 
     policy action(:complete_work_order) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
       authorize_if relates_to_actor_via(:assigned_to)
     end
 
     policy action([:save_work_order_photos, :maybe_delete_existing_photos]) do
-      authorize_if always()
+      authorize_if IsAdmin
+      authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
+      authorize_if relates_to_actor_via(:assigned_to)
     end
 
     policy action(:reopen_work_order) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
     end
 
     policy action(:destroy) do
       authorize_if IsAdmin
       authorize_if IsFleetManager
+      authorize_if IsMaintenanceManager
     end
   end
 
@@ -308,11 +322,11 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
         |> Ash.Changeset.force_change_attribute(:date_and_time_completed, DateTime.utc_now())
       end
 
-      change fn changeset, _context ->
+      change fn changeset, context ->
         Ash.Changeset.after_action(changeset, fn changeset, work_order ->
-          resolve_issues(changeset)
-          reset_service_reminders(changeset)
-          update_inventory(changeset)
+          resolve_issues(changeset, context)
+          reset_service_reminders(changeset, context)
+          update_inventory(changeset, context)
           {:ok, work_order}
         end)
       end
@@ -545,7 +559,7 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     strategy :context
   end
 
-  def resolve_issues(work_order_changeset) do
+  def resolve_issues(work_order_changeset, context) do
     work_order_id = Ash.Changeset.get_data(work_order_changeset, :id)
 
     Ash.Changeset.get_data(work_order_changeset, :issues)
@@ -554,11 +568,11 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
 
       issue
       |> Ash.Changeset.for_update(:resolve_from_work_order, params)
-      |> Ash.update!()
+      |> Ash.update!(tenant: work_order_changeset.tenant, actor: context.actor)
     end)
   end
 
-  def reset_service_reminders(changeset) do
+  def reset_service_reminders(changeset, context) do
     reminders =
       Ash.Changeset.get_data(changeset, :work_order_service_tasks)
       |> Stream.filter(&(not is_nil(&1.service_task.service_reminder)))
@@ -567,26 +581,25 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
     work_order_id =
       Ash.Changeset.get_data(changeset, :id)
 
-    # TODO: Revisit this implememtation. Handle cases where interval is nil
+    # TODO: Revisit this implementation. Handle cases where interval is nil
     # Also save the reminder to service history
     Enum.map(reminders, fn reminder ->
-      reset_reminder(reminder, work_order_id, changeset.tenant)
+      reset_reminder(reminder, work_order_id, changeset.tenant, context.actor)
     end)
   end
 
   @doc """
   Reset a service reminder. We pattern match to call the appropriate function to reset the servce reminder.
   """
-  def reset_reminder(reminder, work_order_id, tenant) do
+  def reset_reminder(reminder, work_order_id, tenant, actor) do
     reminder
     # We create the history before resetting the reminder
-    |> create_reminder_history(work_order_id, tenant)
+    |> create_reminder_history(work_order_id, tenant, actor)
     |> Ash.Changeset.for_update(:update_by_work_order_completion)
-    |> Ash.update!(tenant: tenant)
+    |> Ash.update!(tenant: tenant, actor: actor)
   end
 
-  defp create_reminder_history(reminder, work_order_id, tenant) do
-    IO.inspect reminder
+  defp create_reminder_history(reminder, work_order_id, tenant, actor) do
     reminder_history_params =
       Map.take(reminder, [
         :next_due_date,
@@ -602,12 +615,12 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
 
     Fleetms.VehicleMaintenance.ServiceReminderHistory
     |> Ash.Changeset.for_create(:create, reminder_history_params)
-    |> Ash.create!(tenant: tenant)
+    |> Ash.create!(tenant: tenant, actor: actor)
 
     reminder
   end
 
-  defp update_inventory(work_order_changeset) do
+  defp update_inventory(work_order_changeset, context) do
     work_order_service_tasks_parts =
       Ash.Changeset.get_data(work_order_changeset, :work_order_service_tasks)
       |> Enum.map(& &1.work_order_service_task_parts)
@@ -624,12 +637,13 @@ defmodule Fleetms.VehicleMaintenance.WorkOrder do
         Fleetms.Inventory.PartInventoryLocation.get_by_part_and_location!(
           part_id,
           inventory_location_id,
-          tenant: work_order_changeset.tenant
+          tenant: work_order_changeset.tenant,
+          actor: context.actor
         )
 
       part_inventory_location
       |> Ash.Changeset.for_update(:update_stock_quantity, %{quantity: quantity, part_id: part_id})
-      |> Ash.update!()
+      |> Ash.update!(tenant: work_order_changeset.tenant, actor: context.actor)
     end)
   end
 end

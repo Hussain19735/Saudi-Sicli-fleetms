@@ -28,11 +28,11 @@ defmodule Fleetms.FeatureFlags.Accounts do
   end
 
   def disable_user_management do
-    FunWithFlags.enable(@feature_flags.user_management)
+    FunWithFlags.disable(@feature_flags.user_management)
   end
 
   def disable_user_management(%Organization{} = actor) do
-    FunWithFlags.enable(@feature_flags.user_management, for_actor: actor)
+    FunWithFlags.disable(@feature_flags.user_management, for_actor: actor)
   end
 
   def user_registration_enabled? do

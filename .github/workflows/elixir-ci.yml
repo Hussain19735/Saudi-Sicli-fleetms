@@ -1,0 +1,65 @@
+name: Elixir CI
+
+on:
+  push:
+    branches:
+      - feature/ui-dashboard-redesign
+      - feature/rbac-and-fleet-workflows
+  pull_request:
+    branches:
+      - main
+      - feature/ui-dashboard-redesign
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleetms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fleetms_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MIX_ENV: test
+      DATABASE_URL: ecto://postgres:postgres@localhost/fleetms_test
+      SECRET_KEY_BASE: ci-only-secret-key-base-for-tests-not-production
+      PHX_HOST: localhost
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.16'
+          otp-version: '26'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Run tests
+        run: mix test

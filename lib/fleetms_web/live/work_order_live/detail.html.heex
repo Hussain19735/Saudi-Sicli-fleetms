@@ -265,7 +265,8 @@
       <.list>
         <:item title="Status">
           <.badge :if={@work_order.status == :Open} kind={:primary} label="Open" />
-          <.badge :if={@work_order.status == :Resolved} kind={:success} label="Resolved" />
+          <.badge :if={@work_order.status == :Pending} kind={:warning} label="Pending / In Progress" />
+          <.badge :if={@work_order.status == :Completed} kind={:success} label="Completed" />
         </:item>
 
         <:item title="Description">
@@ -300,7 +301,7 @@
           </.badge>
         </:item>
         <:item title="Date Completed">
-          <.badge :if={@work_order.status == :Open} kind={:warning} label="Not Completed yet." />
+          <.badge :if={@work_order.status != :Completed} kind={:warning} label="Not Completed yet." />
           <.badge :if={@work_order.status == :Completed}>
             <time id="datetime-work-order-completed" phx-hook="LocalTime" class="invisible">
               <%= @work_order.date_and_time_completed %>

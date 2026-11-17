@@ -1020,9 +1020,14 @@ defmodule FleetmsWeb.LayoutComponents do
         </li>
       </ul>
     </footer>
-    <p class="my-10 text-sm text-center text-gray-500">
-      &copy; 2019-2022 <a href="https://flowbite.com/" class="hover:underline" target="_blank">Fleetms</a>. All rights reserved.
-    </p>
+    <div class="fleet-brand-footer mx-4 my-8 border-t border-gray-200 pt-5 text-center dark:border-gray-700">
+      <p class="text-xs font-medium tracking-wide text-gray-500 dark:text-gray-400">
+        Designed and Developed by <span class="font-semibold text-gray-700 dark:text-gray-200">Engineer Hussain Bashaik</span>
+      </p>
+      <p class="mt-1 text-xs text-gray-400 dark:text-gray-500" lang="ar" dir="rtl">
+        تصميم وتطوير المهندس حسين باشيخ
+      </p>
+    </div>
     """
   end
 end

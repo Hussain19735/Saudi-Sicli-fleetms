@@ -61,6 +61,24 @@ defmodule Fleetms.VehicleManagement.Vehicle do
       constraints min_length: 0, max_length: 30
     end
 
+    attribute :registration_expiry_date, :date do
+      public? true
+      allow_nil? true
+      description "The expiration date of the vehicle registration."
+    end
+
+    attribute :insurance_expiry_date, :date do
+      public? true
+      allow_nil? true
+      description "The expiration date of the vehicle insurance."
+    end
+
+    attribute :periodic_inspection_expiry_date, :date do
+      public? true
+      allow_nil? true
+      description "The expiration date of the periodic vehicle inspection."
+    end
+
     attribute :vin, :string do
       public? true
       constraints min_length: 0, max_length: 30

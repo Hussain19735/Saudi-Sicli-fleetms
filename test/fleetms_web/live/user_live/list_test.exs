@@ -29,7 +29,11 @@ defmodule FleetmsWeb.UserLive.ListTest do
   defp create_initial_org_and_user(_) do
     user =
       initial_user_fixture()
-      |> Ash.load!(:full_name)
+      |> Ash.load!([:full_name, :organization])
+      |> then(fn user ->
+        Fleetms.FeatureFlags.Accounts.enable_user_management(user.organization)
+        user
+      end)
 
     %{admin_user: user}
   end
@@ -38,12 +42,15 @@ defmodule FleetmsWeb.UserLive.ListTest do
     setup [:create_initial_org_and_user]
 
     test "lists all users", %{conn: conn, admin_user: admin_user} do
-      {:ok, _user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(admin_user)
         |> live(~p"/users")
 
-      assert html =~ "All Users"
+      render_async(user_list_live)
+      html = render(user_list_live)
+
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
     end
 
@@ -57,14 +64,15 @@ defmodule FleetmsWeb.UserLive.ListTest do
           roles: [:fleet_manager, :technician, :driver]
         })
 
-      {:ok, user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users")
 
       render_async(user_list_live)
+      html = render(user_list_live)
 
-      assert html =~ "All Users"
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
       assert html =~ user.full_name
       refute has_element?(user_list_live, "button", "Add User")
@@ -88,14 +96,15 @@ defmodule FleetmsWeb.UserLive.ListTest do
           roles: [:fleet_manager, :technician, :driver]
         })
 
-      {:ok, user_list_live, html} =
+      {:ok, user_list_live, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users")
 
       render_async(user_list_live)
+      html = render(user_list_live)
 
-      assert html =~ "All Users"
+      assert html =~ "All المستخدمون"
       assert html =~ admin_user.full_name
       assert html =~ user.full_name
       refute has_element?(user_list_live, ~s{[href="/users/#{admin_user.id}/edit"]}, "Edit User")
@@ -220,6 +229,10 @@ defmodule FleetmsWeb.UserLive.ListTest do
              |> render_submit()
 
       assert_patch(user_list_live, ~p"/users")
+
+      # The listing is refreshed asynchronously by handle_params after the
+      # patch; wait for that query before asserting the updated email.
+      render_async(user_list_live)
 
       html = render(user_list_live)
       assert html =~ "User updated successfully"

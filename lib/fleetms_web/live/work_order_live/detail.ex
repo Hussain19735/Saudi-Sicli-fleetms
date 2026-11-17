@@ -120,7 +120,10 @@ defmodule FleetmsWeb.WorkOrderLive.Detail do
 
   @impl true
   def handle_event("add_issue", %{"issue_id" => issue_id}, socket) do
-    issue = Fleetms.VehicleIssues.Issue.get_by_id!(issue_id)
+    %{tenant: tenant, current_user: actor} = socket.assigns
+
+    issue =
+      Fleetms.VehicleIssues.Issue.get_by_id!(issue_id, tenant: tenant, actor: actor)
 
     form =
       AshPhoenix.Form.add_form(socket.assigns.form, "work_order[issues]",
@@ -285,11 +288,11 @@ defmodule FleetmsWeb.WorkOrderLive.Detail do
 
   @impl true
   def handle_event("complete_work_order", _params, socket) do
-    work_order = socket.assigns.work_order
+    %{tenant: tenant, current_user: actor, work_order: work_order} = socket.assigns
 
     work_order
     |> Ash.Changeset.for_update(:complete_work_order)
-    |> Ash.update!(actor: socket.assigns.current_user)
+    |> Ash.update!(tenant: tenant, actor: actor)
 
     socket =
       put_toast(socket, :info, "Work Order was marked as completed.")

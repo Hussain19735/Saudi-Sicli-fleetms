@@ -1,0 +1,2 @@
+VehiclePlate,EmployeeNumber,ProjectCode,CityCode,AssignmentStartDate,AssignmentEndDate,IsPrimary,Status,Notes
+ABC-1234,EMP-001,PRJ-001,JED,2026-01-01,,TRUE,Active,
