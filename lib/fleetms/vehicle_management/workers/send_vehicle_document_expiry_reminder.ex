@@ -12,7 +12,7 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
     unique: [
       period: 30 * 24 * 60 * 60,
       fields: [:worker, :args],
-      states: [:available, :scheduled, :executing, :retryable, :completed, :discarded, :cancelled]
+      states: [:available, :scheduled, :executing, :retryable, :completed, :discarded]
     ]
 
   alias Fleetms.Integrations.WhatsApp.{Client, VehicleExpiryReminder}
