@@ -30,6 +30,7 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :read,
              :create,
              :update,
+             :record_payment,
              :manage_users,
              :manage_settings
            ],
