@@ -92,7 +92,7 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
   end
 
   test "maintenance manager approval record requires assigned project and city scope" do
-    actor = %{role: :maintenance_manager, project_ids: ["P-1"], city_ids: ["JED"]}
+    actor = %{role: :maintenance_manager, email: "manager@example.com", project_ids: ["P-1"], city_ids: ["JED"]}
 
     assert {:error, :sharepoint_adapter_not_selected} =
              Service.create(
@@ -123,6 +123,50 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                %{"Decision" => "Rejected"},
                nil
              )
+  end
+
+  test "approval records require a valid decision and parent record" do
+    actor = %{role: :maintenance_manager, email: "manager@example.com", project_ids: ["P-1"], city_ids: ["JED"]}
+    target = %{project_id: "P-1", city_id: "JED"}
+
+    assert {:error, :invalid_approval_decision} =
+             Service.create(%{}, actor, :approval_records, %{
+               "ApprovalType" => "Repair",
+               "Decision" => "Pending",
+               "ParentRecordId" => "WO-1",
+               "ApprovedAmount" => 100
+             }, target)
+
+    assert {:error, :parent_record_id_required} =
+             Service.create(%{}, actor, :approval_records, %{
+               "ApprovalType" => "Repair",
+               "Decision" => "Approved",
+               "ApprovedAmount" => 100
+             }, target)
+  end
+
+  test "approval records reject negative or missing approved amounts" do
+    actor = %{role: :maintenance_manager, email: "manager@example.com", project_ids: ["P-1"], city_ids: ["JED"]}
+    target = %{project_id: "P-1", city_id: "JED"}
+    fields = %{"ApprovalType" => "Repair", "Decision" => "Approved", "ParentRecordId" => "WO-1"}
+
+    assert {:error, :invalid_approved_amount} =
+             Service.create(%{}, actor, :approval_records, Map.put(fields, "ApprovedAmount", -1), target)
+
+    assert {:error, :invalid_approved_amount} =
+             Service.create(%{}, actor, :approval_records, fields, target)
+  end
+
+  test "approval record requires authenticated approver identity" do
+    actor = %{role: :maintenance_manager, project_ids: ["P-1"], city_ids: ["JED"]}
+
+    assert {:error, :approval_actor_identity_required} =
+             Service.create(%{}, actor, :approval_records, %{
+               "ApprovalType" => "Repair",
+               "Decision" => "Approved",
+               "ParentRecordId" => "WO-1",
+               "ApprovedAmount" => 100
+             }, %{project_id: "P-1", city_id: "JED"})
   end
 
   test "approval record creation rejects unknown approval types" do
