@@ -61,15 +61,25 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
 
   def authorize(_actor, _action, _target), do: {:error, :forbidden}
 
-  defp in_scope?(actor, target) do
+  # Maintenance-team access requires a real project and/or city scope.
+  # Every scope dimension present on the record must match the actor's grants.
+  # Missing scope is denied rather than treated as unrestricted access.
+  defp in_scope?(actor, target) when is_map(target) do
+    project_id = Map.get(target, :project_id)
+    city_id = Map.get(target, :city_id)
+
+    has_scope? = is_binary(project_id) or is_binary(city_id)
+
     project_ok? =
-      is_nil(Map.get(target, :project_id)) or
-        Map.get(target, :project_id) in Map.get(actor, :project_ids, [])
+      is_nil(project_id) or
+        (is_binary(project_id) and project_id in Map.get(actor, :project_ids, []))
 
     city_ok? =
-      is_nil(Map.get(target, :city_id)) or
-        Map.get(target, :city_id) in Map.get(actor, :city_ids, [])
+      is_nil(city_id) or
+        (is_binary(city_id) and city_id in Map.get(actor, :city_ids, []))
 
-    project_ok? and city_ok?
+    has_scope? and project_ok? and city_ok?
   end
+
+  defp in_scope?(_actor, _target), do: false
 end
