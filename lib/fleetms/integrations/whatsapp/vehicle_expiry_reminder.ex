@@ -80,7 +80,7 @@ defmodule Fleetms.Integrations.WhatsApp.VehicleExpiryReminder do
 
     normalized =
       cond do
-        Regex.match?(~r/^05[0-9]{8}$/, phone) -> "+966" <> String.slice(phone, 1..-1//1)
+        Regex.match?(~r/^05[0-9]{8}$/, phone) -> "+966" <> String.replace_prefix(phone, "0", "+966")
         Regex.match?(~r/^5[0-9]{8}$/, phone) -> "+966" <> phone
         Regex.match?(~r/^9665[0-9]{8}$/, phone) -> "+" <> phone
         Regex.match?(~r/^\+9665[0-9]{8}$/, phone) -> phone
