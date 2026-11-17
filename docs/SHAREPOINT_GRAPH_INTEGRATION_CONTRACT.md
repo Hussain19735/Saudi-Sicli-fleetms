@@ -84,9 +84,20 @@ Provision list names and fields according to docs/SAUDI_SICLI_FLEET_MODULES.md, 
 - InvoiceType (Choice): Repair, Spare Parts, Towing, Periodic Inspection, Tires, Other
 - InvoiceDate (Date), VehicleId, WorkOrderId, BreakdownReportId, ProjectId, SupplierId (Text; indexed references)
 - Amount, VATAmount, TotalAmount, PaidAmount, RemainingAmount (Currency)
-- ApprovalStatus, PaymentStatus (Choice)
+- ApprovalStatus (Choice)
+- PaymentStatus (Choice): Unpaid, Paid
+- PaymentReference, PaidBy, PaidByRole (Text)
+- PaidAt (DateTime)
 - DocumentId (Text), Notes (Multiple lines)
 - CreatedAt, UpdatedAt (DateTime)
+
+Invoice creation must validate that Amount + VATAmount = TotalAmount and initialize
+PaidAmount to zero, RemainingAmount to TotalAmount, and PaymentStatus to Unpaid.
+Payment fields are server-managed and cannot be changed through generic invoice
+updates. The current payment workflow records one full payment only; partial
+payments are not supported. Only Company Admin may record a payment, and the
+operation must use the SharePoint item ETag to prevent concurrent duplicate
+updates. Store the payment reference, actor identity/role, and timestamp.
 
 ### Fleet_ApprovalRecords
 - Title (Text): generated approval reference
@@ -123,7 +134,7 @@ Only Maintenance Manager and authorized Maintenance Team members may approve rep
 4. An invoice for repair must not pass the application's approval gate when ActualRepairCost exceeds ApprovedRepairCost unless the additional amount has an approved record.
 5. Record decision, approver, role, timestamp, approved amount, and comments.
 6. Keep towing costs separate from repair costs.
-7. Do not implement partial-payment workflows unless separately requested.
+7. Do not implement partial-payment workflows unless separately requested. The current implementation records full payment only.
 
 ## File metadata
 For each document store: DocumentId, DriveItemId, ParentResource, ParentRecordId, DocumentCategory, FileName, ContentType, Size, UploadedBy, UploadedAt. Document categories include quotation, repair_invoice, towing_invoice, before_photo, after_photo, additional_damage_photo, inspection_report, receipt, and other.
