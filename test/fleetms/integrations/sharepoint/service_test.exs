@@ -221,6 +221,35 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              )
   end
 
+  test "repair invoice requires a linked work order" do
+    assert {:error, :work_order_id_required} =
+             Service.create(
+               %{},
+               %{role: :company_admin},
+               :invoices,
+               %{"InvoiceType" => "Repair"},
+               %{project_id: "P-1", city_id: "JED"}
+             )
+  end
+
+  test "repair invoice is allowed when actual cost is within original and additional approvals" do
+    assert :ok = Service.validate_repair_cost_approval(1_500, 1_000, 500)
+    assert :ok = Service.validate_repair_cost_approval(900, 1_000, 0)
+  end
+
+  test "repair invoice is blocked when additional approval does not cover the overrun" do
+    assert {:error, :additional_repair_approval_required} =
+             Service.validate_repair_cost_approval(1_501, 1_000, 500)
+  end
+
+  test "repair invoice fails closed when approved cost data is missing or invalid" do
+    assert {:error, :repair_cost_data_missing_or_invalid} =
+             Service.validate_repair_cost_approval(nil, 1_000, 0)
+
+    assert {:error, :repair_cost_data_missing_or_invalid} =
+             Service.validate_repair_cost_approval(1_500, "not-a-number", 500)
+  end
+
   test "invoice creation rejects invoice fields that disagree with trusted scope" do
     actor = %{role: :company_admin}
 
