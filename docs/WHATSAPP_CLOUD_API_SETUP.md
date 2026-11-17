@@ -5,13 +5,12 @@
 The application now has a server-side foundation for sending **approved WhatsApp message templates** through Meta's official Cloud API.
 
 This stage does not:
-- send messages automatically from fleet events;
-- select drivers or other recipients;
+- send messages automatically from unrelated fleet events such as breakdowns or repair updates;
 - send free-form text messages;
 - create or approve Meta message templates;
 - send real messages until the company configures Meta credentials and explicitly enables the workflow.
 
-Callers must perform authorization and resolve the intended recipient on the server before calling the client.
+All recipient resolution and authorization happen in trusted server-side code. The expiry workflow uses the active vehicle assignment and the assigned driver profile; the client itself does not select recipients.
 
 ## Server environment
 
@@ -46,7 +45,7 @@ The client:
 - returns the provider message ID on success;
 - does not expose the access token in returned errors.
 
-No fleet event handler or scheduled worker is connected in this initial stage. Add those only after the company confirms the approved message templates, recipient rules, language policy, and triggering events.
+Breakdown, repair-status, and invoice notifications are not connected. The scheduled vehicle-document expiry workflow is described below and remains opt-in until the company confirms the approved template and enables it.
 
 
 ## Vehicle document expiry reminders
