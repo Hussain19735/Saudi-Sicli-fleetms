@@ -56,5 +56,7 @@ defmodule Fleetms.Integrations.SharePoint.ConfigTest do
     assert settings.adapter == :sharepoint
     assert settings.site_id == "site"
     assert settings.drive_id == "drive"
+    assert settings.list_ids.cities == "cities"
+    assert settings.list_ids.audit_log == "audit"
   end
 end
