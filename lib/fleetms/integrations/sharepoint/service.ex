@@ -69,6 +69,26 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   end
 
   @doc """
+  Moves a received supplier invoice into maintenance review.
+  Maintenance Team and Maintenance Manager can perform this scoped action.
+  """
+  def mark_supplier_invoice_under_review(settings, actor, invoice_id) when is_binary(invoice_id) do
+    transition_supplier_invoice(settings, actor, invoice_id, :review_supplier_invoice, ["Received"], "Under Review")
+  end
+
+  def mark_supplier_invoice_under_review(_settings, _actor, _invoice_id), do: {:error, :invalid_invoice_id}
+
+  @doc """
+  Rejects a supplier invoice that fails maintenance review. Only a scoped
+  Maintenance Manager may reject an invoice.
+  """
+  def reject_supplier_invoice(settings, actor, invoice_id) when is_binary(invoice_id) do
+    transition_supplier_invoice(settings, actor, invoice_id, :reject_supplier_invoice, ["Received", "Under Review"], "Rejected")
+  end
+
+  def reject_supplier_invoice(_settings, _actor, _invoice_id), do: {:error, :invalid_invoice_id}
+
+  @doc """
   Approves a received supplier invoice after maintenance review.
   Only a scoped Maintenance Manager may perform this transition.
   """
@@ -117,6 +137,20 @@ defmodule Fleetms.Integrations.SharePoint.Service do
       current_status not in allowed_statuses -> {:error, :invalid_invoice_approval_transition}
       not is_binary(actor_id) -> {:error, :invoice_approval_actor_identity_required}
       not is_atom(role) -> {:error, :invoice_approval_actor_identity_required}
+      next_status == "Under Review" ->
+        {:ok, %{
+          "ApprovalStatus" => "Under Review",
+          "ReviewedBy" => actor_id,
+          "ReviewedByRole" => Atom.to_string(role),
+          "ReviewedAt" => DateTime.truncate(at, :second) |> DateTime.to_iso8601()
+        }}
+      next_status == "Rejected" ->
+        {:ok, %{
+          "ApprovalStatus" => "Rejected",
+          "RejectedBy" => actor_id,
+          "RejectedByRole" => Atom.to_string(role),
+          "RejectedAt" => DateTime.truncate(at, :second) |> DateTime.to_iso8601()
+        }}
       next_status == "Approved" ->
         {:ok, %{
           "ApprovalStatus" => "Approved",
@@ -192,6 +226,12 @@ defmodule Fleetms.Integrations.SharePoint.Service do
        |> Map.delete("paid_by_role")
        |> Map.delete("approval_status")
        |> Map.delete("ApprovalStatus")
+       |> Map.delete("ReviewedBy")
+       |> Map.delete("ReviewedByRole")
+       |> Map.delete("ReviewedAt")
+       |> Map.delete("RejectedBy")
+       |> Map.delete("RejectedByRole")
+       |> Map.delete("RejectedAt")
        |> Map.delete("ApprovedBy")
        |> Map.delete("ApprovedByRole")
        |> Map.delete("ApprovedAt")
@@ -267,7 +307,7 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     do: reject_invoice_financial_changes(fields)
 
   defp reject_invoice_financial_changes(fields) do
-    protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus approvedby approvedbyrole approvedat senttofinanceby senttofinancebyrole senttofinanceat)
+    protected = ~w(amount vatamount totalamount paidamount remainingamount paymentstatus paymentreference paidat paidby paidbyrole approvalstatus reviewedby reviewedbyrole reviewedat rejectedby rejectedbyrole rejectedat approvedby approvedbyrole approvedat senttofinanceby senttofinancebyrole senttofinanceat)
 
     changed? =
       Enum.any?(Map.keys(fields), fn key ->
