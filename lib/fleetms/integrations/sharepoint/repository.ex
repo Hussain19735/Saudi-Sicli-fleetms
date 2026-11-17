@@ -39,6 +39,14 @@ defmodule Fleetms.Integrations.SharePoint.Repository do
     end
   end
 
+  @spec get(Config.settings(), resource(), String.t()) ::
+          {:ok, map()} | {:error, term()}
+  def get(settings, resource, item_id) when resource in @resources do
+    with {:ok, list_id} <- list_id(settings, resource) do
+      Graph.get_item(settings, list_id, item_id)
+    end
+  end
+
   @spec create(Config.settings(), resource(), map()) ::
           {:ok, map()} | {:error, term()}
   def create(settings, resource, fields) when resource in @resources and is_map(fields) do
