@@ -91,9 +91,11 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   # Audit identity and timestamp are always generated from the authenticated
   # server actor; caller-supplied values cannot impersonate another approver.
   defp approval_audit_fields(%{role: role} = actor) when is_atom(role) do
-    actor_id = Map.get(actor, :email) || Map.get(actor, :id)
+    actor_id =
+      [Map.get(actor, :id), Map.get(actor, :email)]
+      |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
 
-    if is_binary(actor_id) and String.trim(actor_id) != "" do
+    if is_binary(actor_id) do
       {:ok,
        %{
          "DecisionBy" => actor_id,
