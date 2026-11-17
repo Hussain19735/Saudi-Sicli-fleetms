@@ -30,9 +30,6 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
              :read,
              :create,
              :update,
-             :approve_repair,
-             :approve_additional_repair,
-             :approve_towing_invoice,
              :manage_users,
              :manage_settings
            ],
