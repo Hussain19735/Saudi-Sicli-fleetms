@@ -7,7 +7,8 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
   only by browser parameters.
   """
 
-  @manager_roles [:company_admin, :maintenance_manager]
+  @company_admin_roles [:company_admin]
+  @maintenance_manager_roles [:maintenance_manager]
   @maintenance_roles [:maintenance_manager, :maintenance_team]
 
   @type actor :: %{
@@ -24,6 +25,32 @@ defmodule Fleetms.Integrations.SharePoint.AccessPolicy do
         }
 
   @spec authorize(actor(), atom(), target()) :: :ok | {:error, :forbidden}
+  def authorize(%{role: role}, action, _target)
+      when role in @company_admin_roles and action in [
+             :read,
+             :create,
+             :update,
+             :approve_repair,
+             :approve_additional_repair,
+             :approve_towing_invoice,
+             :manage_users,
+             :manage_settings
+           ],
+      do: :ok
+
+  # Maintenance managers may approve maintenance operations but cannot manage
+  # users or global settings. Their SharePoint operational access is global.
+  def authorize(%{role: role}, action, _target)
+      when role in @maintenance_manager_roles and action in [
+             :read,
+             :create,
+             :update,
+             :approve_repair,
+             :approve_additional_repair,
+             :approve_towing_invoice
+           ],
+      do: :ok
+
   def authorize(%{role: role} = actor, action, target)
       when role in [:admin, :technician, :driver] do
     canonical_role =
