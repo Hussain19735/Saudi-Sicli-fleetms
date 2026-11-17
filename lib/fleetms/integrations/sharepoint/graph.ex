@@ -48,7 +48,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
 
     with {:ok, token} <- access_token(settings),
          {:ok, response} <- graph_get(url, token) do
-      collect_pages(response, token, [])
+      collect_pages(response, token, [], MapSet.new(), 0)
     end
   end
 
@@ -156,18 +156,36 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
     end
   end
 
-  defp collect_pages(%Req.Response{body: %{"value" => items} = body}, token, acc) do
+  @max_pagination_pages 100
+
+  defp collect_pages(_response, _token, _acc, _visited, page_count)
+       when page_count >= @max_pagination_pages,
+       do: {:error, {:graph_request_failed, :pagination_limit_exceeded}}
+
+  defp collect_pages(%Req.Response{body: %{"value" => items} = body}, token, acc, visited, page_count)
+       when is_list(items) do
     case body["@odata.nextLink"] do
       nil ->
         {:ok, Enum.reverse(acc) ++ items}
 
       url when is_binary(url) ->
-        if graph_url?(url) do
-          with {:ok, response} <- graph_get(url, token) do
-            collect_pages(response, token, Enum.reverse(items, acc))
-          end
-        else
-          {:error, {:graph_request_failed, :invalid_pagination_url}}
+        cond do
+          not graph_url?(url) ->
+            {:error, {:graph_request_failed, :invalid_pagination_url}}
+
+          MapSet.member?(visited, url) ->
+            {:error, {:graph_request_failed, :pagination_loop_detected}}
+
+          true ->
+            with {:ok, response} <- graph_get(url, token) do
+              collect_pages(
+                response,
+                token,
+                Enum.reverse(items, acc),
+                MapSet.put(visited, url),
+                page_count + 1
+              )
+            end
         end
 
       _other ->
@@ -175,7 +193,7 @@ defmodule Fleetms.Integrations.SharePoint.Graph do
     end
   end
 
-  defp collect_pages(_response, _token, _acc),
+  defp collect_pages(_response, _token, _acc, _visited, _page_count),
     do: {:error, {:graph_request_failed, :invalid_response}}
 
   defp graph_url?(url) do
