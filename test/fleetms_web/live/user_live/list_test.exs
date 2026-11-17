@@ -29,7 +29,11 @@ defmodule FleetmsWeb.UserLive.ListTest do
   defp create_initial_org_and_user(_) do
     user =
       initial_user_fixture()
-      |> Ash.load!(:full_name)
+      |> Ash.load!([:full_name, :organization])
+      |> then(fn user ->
+        Fleetms.FeatureFlags.Accounts.enable_user_management(user.organization)
+        user
+      end)
 
     %{admin_user: user}
   end
