@@ -309,6 +309,7 @@ defmodule Fleetms.Enums do
       :admin,
       :fleet_manager,
       :maintenance_manager,
+      :finance,
       :technician,
       :driver,
       :viewer
