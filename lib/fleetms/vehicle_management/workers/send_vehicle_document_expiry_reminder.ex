@@ -12,7 +12,7 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
     unique: [
       period: 30 * 24 * 60 * 60,
       fields: [:worker, :args],
-      states: [:available, :scheduled, :executing, :retryable, :completed, :discarded, :cancelled, :failed]
+      states: [:available, :scheduled, :executing, :retryable, :completed, :discarded, :cancelled]
     ]
 
   alias Fleetms.Integrations.WhatsApp.{Client, VehicleExpiryReminder}
@@ -37,7 +37,7 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
     with {:ok, expiry_date} <- Date.from_iso8601(args["expiry_date"]),
          {:ok, assignment} <- current_assignment(args),
          {:ok, phone} <- current_phone(assignment),
-         {:ok, reminder} <- reminder_data(args, expiry_date),
+         {:ok, reminder} <- reminder_data(args, expiry_date, assignment.vehicle),
          template when is_binary(template) <- Map.get(settings, :vehicle_expiry_template),
          language when is_binary(language) <- Map.get(settings, :vehicle_expiry_language, "ar"),
          components <- VehicleExpiryReminder.template_components(assignment.vehicle, reminder, language),
@@ -63,16 +63,19 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
 
   defp current_assignment(args) do
     now = DateTime.utc_now()
+    assignment_id = args["assignment_id"]
+    vehicle_id = args["vehicle_id"]
+    tenant = args["tenant"]
 
     query =
       VehicleAssignment
       |> Ash.Query.filter(
-        id == ^args["assignment_id"] and vehicle_id == ^args["vehicle_id"] and
+        id == ^assignment_id and vehicle_id == ^vehicle_id and
           start_datetime <= ^now and (is_nil(end_datetime) or end_datetime > ^now)
       )
       |> Ash.Query.load(assignee: [:user_profile], vehicle: [])
 
-    case Ash.read(query, tenant: args["tenant"]) do
+    case Ash.read(query, tenant: tenant) do
       {:ok, [assignment | _]} when not is_nil(assignment.vehicle) and not is_nil(assignment.assignee) ->
         {:ok, assignment}
 
@@ -84,13 +87,13 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
     end
   end
 
-  defp current_phone(assignment) do
-    assignment
-    |> get_in([:assignee, :user_profile, :phone_number])
-    |> VehicleExpiryReminder.normalize_phone()
+  defp current_phone(%{assignee: %{user_profile: %{phone_number: phone}}}) do
+    VehicleExpiryReminder.normalize_phone(phone)
   end
 
-  defp reminder_data(args, expiry_date) do
+  defp current_phone(_assignment), do: {:error, :invalid_phone}
+
+  defp reminder_data(args, expiry_date, vehicle) do
     document_type =
       case args["document_type"] do
         "registration" -> {:registration, :registration_expiry_date, "انتهاء استمارة المركبة", "Vehicle registration"}
@@ -101,22 +104,21 @@ defmodule Fleetms.VehicleManagement.Workers.SendVehicleDocumentExpiryReminder do
 
     case document_type do
       {type, field, arabic_label, english_label} ->
-        actual_date = Map.get(assignment_vehicle_placeholder(), field)
-        _ = actual_date
-
-        {:ok,
-         %{
-           document_type: type,
-           expiry_date: expiry_date,
-           days_before: args["days_before"],
-           arabic_label: arabic_label,
-           english_label: english_label
-         }}
+        if Map.get(vehicle, field) == expiry_date and args["days_before"] in [30, 15] do
+          {:ok,
+           %{
+             document_type: type,
+             expiry_date: expiry_date,
+             days_before: args["days_before"],
+             arabic_label: arabic_label,
+             english_label: english_label
+           }}
+        else
+          {:error, :stale_vehicle_expiry_reminder}
+        end
 
       nil ->
         {:error, :invalid_document_type}
     end
   end
-
-  defp assignment_vehicle_placeholder, do: %{}
 end
