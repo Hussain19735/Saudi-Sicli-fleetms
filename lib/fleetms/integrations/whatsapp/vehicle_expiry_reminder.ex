@@ -76,7 +76,7 @@ defmodule Fleetms.Integrations.WhatsApp.VehicleExpiryReminder do
   Accepts international E.164 numbers and common Saudi mobile formats.
   """
   def normalize_phone(phone) when is_binary(phone) do
-    phone = String.replace(phone, ~r/[\\s\\-()]/, "")
+    phone = String.replace(phone, ~r/[\s\-()]/, "")
 
     normalized =
       cond do
