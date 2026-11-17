@@ -286,7 +286,10 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
                "PaidAmount" => 115,
                "RemainingAmount" => 0,
                "PaymentStatus" => "Paid",
-               "PaymentReference" => "UNTRUSTED"
+               "PaymentReference" => "UNTRUSTED",
+               "ApprovalStatus" => "Paid",
+               "ApprovedBy" => "UNTRUSTED",
+               "SentToFinanceBy" => "UNTRUSTED"
              })
 
     assert fields["Amount"] == 100.0
@@ -295,7 +298,10 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert fields["PaidAmount"] == 0.0
     assert fields["RemainingAmount"] == 115.0
     assert fields["PaymentStatus"] == "Unpaid"
+    assert fields["ApprovalStatus"] == "Received"
     refute Map.has_key?(fields, "PaymentReference")
+    refute Map.has_key?(fields, "ApprovedBy")
+    refute Map.has_key?(fields, "SentToFinanceBy")
   end
 
   test "invoice creation rejects inconsistent or negative totals" do
@@ -323,12 +329,12 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
   end
 
   test "full invoice payment records payer identity and closes the balance" do
-    actor = %{role: :company_admin, id: "admin-1", email: "admin@example.com"}
+    actor = %{role: :finance, id: "finance-1", email: "finance@example.com"}
     paid_at = ~U[2026-11-17 10:00:00Z]
 
     assert {:ok, update} =
              Service.build_full_payment_update(
-               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Unpaid"},
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Unpaid", "ApprovalStatus" => "Sent to Finance"},
                actor,
                "BANK-REF-123",
                paid_at
@@ -339,15 +345,15 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
     assert update["PaymentStatus"] == "Paid"
     assert update["PaymentReference"] == "BANK-REF-123"
     assert update["PaidBy"] == "admin-1"
-    assert update["PaidByRole"] == "company_admin"
+    assert update["PaidByRole"] == "finance"
     assert update["PaidAt"] == "2026-11-17T10:00:00Z"
   end
 
   test "invoice cannot be paid twice" do
     assert {:error, :invoice_already_paid_or_payment_reference_required} =
              Service.build_full_payment_update(
-               %{"TotalAmount" => 115, "PaidAmount" => 115, "PaymentStatus" => "Paid"},
-               %{role: :company_admin, email: "admin@example.com"},
+               %{"TotalAmount" => 115, "PaidAmount" => 115, "PaymentStatus" => "Paid", "ApprovalStatus" => "Sent to Finance"},
+               %{role: :finance, email: "finance@example.com"},
                "BANK-REF-124"
              )
   end
@@ -355,9 +361,56 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
   test "invoice payment requires an authenticated actor identity" do
     assert {:error, :invoice_payment_actor_identity_required} =
              Service.build_full_payment_update(
-               %{"TotalAmount" => 115, "PaidAmount" => 0},
-               %{role: :company_admin},
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "ApprovalStatus" => "Sent to Finance"},
+               %{role: :finance},
                "BANK-REF-125"
+             )
+  end
+
+  test "supplier invoice approval and handoff require the correct prior state" do
+    manager = %{role: :maintenance_manager, id: "manager-1"}
+    at = ~U[2026-11-17 10:00:00Z]
+
+    assert {:ok, approved} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Received"}, manager, ["Received", "Under Review"], "Approved", at)
+
+    assert approved["ApprovalStatus"] == "Approved"
+    assert approved["ApprovedBy"] == "manager-1"
+    assert approved["ApprovedByRole"] == "maintenance_manager"
+    assert approved["ApprovedAt"] == "2026-11-17T10:00:00Z"
+
+    assert {:ok, sent} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Approved"}, manager, ["Approved"], "Sent to Finance", at)
+
+    assert sent["ApprovalStatus"] == "Sent to Finance"
+    assert sent["SentToFinanceBy"] == "manager-1"
+
+    assert {:error, :invalid_invoice_approval_transition} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Received"}, manager, ["Approved"], "Sent to Finance", at)
+
+    assert {:error, :invalid_invoice_approval_transition} =
+             Service.build_invoice_status_update(%{"ApprovalStatus" => "Rejected"}, manager, ["Received", "Under Review"], "Approved", at)
+  end
+
+  test "Finance invoice listing excludes invoices not sent to Finance and out-of-scope invoices" do
+    actor = %{role: :finance, project_ids: ["P-1"], city_ids: ["JED"]}
+    invoices = [
+      %{"fields" => %{"ApprovalStatus" => "Sent to Finance", "ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"fields" => %{"ApprovalStatus" => "Approved", "ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"fields" => %{"ApprovalStatus" => "Sent to Finance", "ProjectId" => "P-2", "CityId" => "JED"}},
+      %{"fields" => %{"ApprovalStatus" => "Sent to Finance", "ProjectId" => "P-1", "CityId" => "RUH"}}
+    ]
+
+    assert [visible] = Service.filter_finance_invoice_records(invoices, actor)
+    assert visible["fields"]["ProjectId"] == "P-1"
+  end
+
+  test "payment cannot be built before the invoice is sent to Finance" do
+    assert {:error, :invoice_not_sent_to_finance} =
+             Service.build_full_payment_update(
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Unpaid", "ApprovalStatus" => "Approved"},
+               %{role: :finance, email: "finance@example.com"},
+               "BANK-REF-127"
              )
   end
 
@@ -377,8 +430,8 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
   test "invoice cannot be paid twice even if paid amount is inconsistent" do
     assert {:error, :invoice_already_paid_or_payment_reference_required} =
              Service.build_full_payment_update(
-               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Paid"},
-               %{role: :company_admin, email: "admin@example.com"},
+               %{"TotalAmount" => 115, "PaidAmount" => 0, "PaymentStatus" => "Paid", "ApprovalStatus" => "Sent to Finance"},
+               %{role: :finance, email: "finance@example.com"},
                "BANK-REF-126"
              )
   end
