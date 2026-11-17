@@ -18,20 +18,15 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              Service.create(%{}, actor, :breakdown_reports, %{"Title" => "Test"}, target)
   end
 
-  test "denies update when existing record scope is outside actor scope" do
-    actor = %{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]}
-    existing_scope = %{project_id: "P-2", city_id: "JED"}
+  test "update_existing fails closed when SharePoint is not configured" do
+    actor = %{role: :company_admin}
 
-    assert {:error, :forbidden} =
-             Service.update(
-               %{},
-               actor,
-               :breakdown_reports,
-               "42",
-               %{"Title" => "Changed"},
-               nil,
-               existing_scope
-             )
+    assert {:error, :sharepoint_adapter_not_selected} =
+             Service.update_existing(%{}, actor, :breakdown_reports, "42", %{"Title" => "Changed"}, nil)
+  end
+
+  test "legacy update API accepting caller-supplied scope is not exposed" do
+    refute function_exported?(Service, :update, 7)
   end
 
   test "denies list when scope is absent" do
@@ -41,33 +36,17 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
              Service.list(%{}, actor, :vehicles, [], %{})
   end
 
-  test "generic update rejects project and city reassignment fields" do
+  test "create rejects fields that disagree with trusted scope" do
     actor = %{role: :company_admin}
+    trusted = %{project_id: "P-1", city_id: "JED"}
 
-    assert {:error, :scope_change_requires_reassignment} =
-             Service.update(
+    assert {:error, :submitted_scope_does_not_match_trusted_scope} =
+             Service.create(
                %{},
                actor,
                :vehicles,
-               "V-1",
-               %{"ProjectId" => "P-2"},
-               nil,
-               %{project_id: "P-1", city_id: "JED"}
-             )
-  end
-
-  test "generic update rejects vehicle relationship changes" do
-    actor = %{role: :company_admin}
-
-    assert {:error, :scope_change_requires_reassignment} =
-             Service.update(
-               %{},
-               actor,
-               :vehicle_assignments,
-               "A-1",
-               %{"vehicle_id" => "V-2"},
-               nil,
-               %{project_id: "P-1", city_id: "JED"}
+               %{"ProjectId" => "P-2", "CityId" => "JED"},
+               trusted
              )
   end
 
