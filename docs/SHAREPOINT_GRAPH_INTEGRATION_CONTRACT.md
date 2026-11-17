@@ -84,20 +84,42 @@ Provision list names and fields according to docs/SAUDI_SICLI_FLEET_MODULES.md, 
 - InvoiceType (Choice): Repair, Spare Parts, Towing, Periodic Inspection, Tires, Other
 - InvoiceDate (Date), VehicleId, WorkOrderId, BreakdownReportId, ProjectId, SupplierId (Text; indexed references)
 - Amount, VATAmount, TotalAmount, PaidAmount, RemainingAmount (Currency)
-- ApprovalStatus (Choice)
+- ApprovalStatus (Choice): Received, Under Review, Approved, Sent to Finance, Rejected
+- ApprovedBy, ApprovedByRole, SentToFinanceBy, SentToFinanceByRole (Text)
+- ApprovedAt, SentToFinanceAt (DateTime)
 - PaymentStatus (Choice): Unpaid, Paid
 - PaymentReference, PaidBy, PaidByRole (Text)
 - PaidAt (DateTime)
 - DocumentId (Text), Notes (Multiple lines)
 - CreatedAt, UpdatedAt (DateTime)
 
-Invoice creation must validate that Amount + VATAmount = TotalAmount and initialize
-PaidAmount to zero, RemainingAmount to TotalAmount, and PaymentStatus to Unpaid.
-Payment fields are server-managed and cannot be changed through generic invoice
-updates. The current payment workflow records one full payment only; partial
-payments are not supported. Only Company Admin may record a payment, and the
-operation must use the SharePoint item ETag to prevent concurrent duplicate
-updates. Store the payment reference, actor identity/role, and timestamp.
+Saudi Sicli receives supplier invoices from workshops, maintenance centers, and
+service providers; it does not issue customer invoices. Creating a Fleet_Invoices
+item records a received supplier invoice and is not tax-invoice issuance.
+
+The invoice workflow is:
+1. Received: maintenance records the supplier invoice and attaches its PDF/image.
+2. Under Review: maintenance checks it against the vehicle, breakdown report,
+   work order, quotation, and approved repair scope.
+3. Approved: a scoped Maintenance Manager approves the supplier invoice.
+4. Sent to Finance: the Maintenance Manager explicitly hands the approved invoice
+   to Finance. This transition is blocked until ApprovalStatus is Approved.
+5. Paid: Finance records the full payment reference. PaymentStatus becomes Paid;
+   ApprovalStatus remains Sent to Finance so Finance can retain its history.
+6. Rejected: maintenance rejects an invoice that does not pass review.
+
+Invoice creation must validate Amount + VATAmount = TotalAmount and initialize
+PaidAmount to zero, RemainingAmount to TotalAmount, PaymentStatus to Unpaid, and
+ApprovalStatus to Received. Approval and handoff metadata are server-managed.
+Payment fields and approval/handoff fields cannot be changed through generic
+invoice updates. The current payment workflow records one full payment only;
+partial payments are not supported. Only a user assigned the Finance role may
+read invoices that have been sent to Finance and record their payment. Finance
+access is restricted to the user's assigned project/city scope and does not grant
+access to other fleet resources or approval operations. Company Admin cannot
+record invoice payments. The payment operation must use the SharePoint item ETag
+to prevent concurrent duplicate updates and store the payment reference, actor
+identity/role, and timestamp.
 
 ### Fleet_ApprovalRecords
 - Title (Text): generated approval reference
@@ -134,7 +156,8 @@ Only Maintenance Manager and authorized Maintenance Team members may approve rep
 4. An invoice for repair must not pass the application's approval gate when ActualRepairCost exceeds ApprovedRepairCost unless the additional amount has an approved record.
 5. Record decision, approver, role, timestamp, approved amount, and comments.
 6. Keep towing costs separate from repair costs.
-7. Do not implement partial-payment workflows unless separately requested. The current implementation records full payment only.
+7. Only a scoped Maintenance Manager may approve a received supplier invoice and send an approved invoice to Finance. Finance may only read invoices sent to Finance and record full payment within assigned project/city scope. Finance cannot approve repairs or edit fleet records; Company Admin cannot record payments.
+8. Do not implement partial-payment workflows unless separately requested. The current implementation records full payment only.
 
 ## File metadata
 For each document store: DocumentId, DriveItemId, ParentResource, ParentRecordId, DocumentCategory, FileName, ContentType, Size, UploadedBy, UploadedAt. Document categories include quotation, repair_invoice, towing_invoice, before_photo, after_photo, additional_damage_photo, inspection_report, receipt, and other.
