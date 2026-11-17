@@ -40,21 +40,19 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
     :ok
   end
 
-  defp enqueue_due_reminders(%{vehicle: nil}, _tenant, _today), do: :ok
-  defp enqueue_due_reminders(%{assignee: nil}, _tenant, _today), do: :ok
-
-  defp enqueue_due_reminders(assignment, tenant, today) do
-    phone =
-      get_in(assignment, [:assignee, :user_profile, :phone_number])
-
+  defp enqueue_due_reminders(
+         %{vehicle: vehicle, assignee: %{user_profile: %{phone_number: phone}}} = assignment,
+         tenant,
+         today
+       ) do
     case VehicleExpiryReminder.normalize_phone(phone) do
       {:ok, _normalized_phone} ->
-        assignment.vehicle
+        vehicle
         |> VehicleExpiryReminder.due_documents(today)
         |> Enum.each(fn reminder ->
           args = %{
             "tenant" => tenant,
-            "vehicle_id" => assignment.vehicle.id,
+            "vehicle_id" => vehicle.id,
             "assignment_id" => assignment.id,
             "document_type" => Atom.to_string(reminder.document_type),
             "expiry_date" => Date.to_iso8601(reminder.expiry_date),
@@ -62,8 +60,11 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
           }
 
           case Oban.insert(SendVehicleDocumentExpiryReminder.new(args)) do
-            {:ok, _job} -> :ok
-            {:error, reason} -> Logger.error("Could not enqueue vehicle document reminder: #{inspect(reason)}")
+            {:ok, _job} ->
+              :ok
+
+            {:error, reason} ->
+              Logger.error("Could not enqueue vehicle document reminder: #{inspect(reason)}")
           end
         end)
 
@@ -71,4 +72,7 @@ defmodule Fleetms.VehicleManagement.Workers.ScanVehicleDocumentExpiries do
         :ok
     end
   end
+
+  defp enqueue_due_reminders(_assignment, _tenant, _today), do: :ok
+
 end
