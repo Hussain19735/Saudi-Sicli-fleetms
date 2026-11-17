@@ -6,9 +6,15 @@ defmodule Fleetms.Integrations.SharePoint.Service do
   scope MUST be loaded from the existing SharePoint record on the server; never
   construct it from browser parameters. Create scope must be validated against
   trusted server-side relationships before calling this module.
+
+  Project, city, and vehicle relationship fields are immutable through the
+  generic update operation. Reassignment requires a dedicated operation with
+  explicit authorization for both the old and new scope.
   """
 
   alias Fleetms.Integrations.SharePoint.{AccessPolicy, Repository}
+
+  @scope_field_names ~w(projectid project_id cityid city_id vehicleid vehicle_id)
 
   @spec authorize(map(), atom(), map()) :: :ok | {:error, :forbidden}
   def authorize(actor, action, trusted_target) do
@@ -28,7 +34,8 @@ defmodule Fleetms.Integrations.SharePoint.Service do
           :ok | {:error, term()}
   def update(settings, actor, resource, item_id, fields, etag, trusted_existing_target)
       when is_map(fields) and is_map(trusted_existing_target) do
-    with :ok <- authorize(actor, :update, trusted_existing_target) do
+    with :ok <- authorize(actor, :update, trusted_existing_target),
+         :ok <- reject_scope_changes(fields) do
       Repository.update(settings, resource, item_id, fields, etag)
     end
   end
@@ -39,5 +46,18 @@ defmodule Fleetms.Integrations.SharePoint.Service do
     with :ok <- authorize(actor, :read, trusted_scope) do
       Repository.list(settings, resource, opts)
     end
+  end
+
+  defp reject_scope_changes(fields) do
+    changed_scope_field? =
+      Enum.any?(Map.keys(fields), fn key ->
+        key
+        |> to_string()
+        |> String.downcase()
+        |> String.replace(~r/[^a-z_]/, "")
+        |> then(&(&1 in @scope_field_names))
+      end)
+
+    if changed_scope_field?, do: {:error, :scope_change_requires_reassignment}, else: :ok
   end
 end
