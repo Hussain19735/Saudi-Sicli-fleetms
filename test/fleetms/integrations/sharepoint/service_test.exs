@@ -3,6 +3,47 @@ defmodule Fleetms.Integrations.SharePoint.ServiceTest do
 
   alias Fleetms.Integrations.SharePoint.Service
 
+  test "vehicle list filtering enforces maintenance project and city scope per record" do
+    actor = %{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]}
+    records = [
+      %{"id" => "V-1", "fields" => %{"ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"id" => "V-2", "fields" => %{"ProjectId" => "P-2", "CityId" => "JED"}},
+      %{"id" => "V-3", "fields" => %{"ProjectId" => "P-1", "CityId" => "RUH"}},
+      %{"id" => "V-4", "fields" => %{"ProjectId" => "P-1"}}
+    ]
+
+    assert [%{"id" => "V-1"}] = Service.filter_vehicle_records(records, actor)
+  end
+
+  test "vehicle list filtering limits employees to assigned vehicle IDs" do
+    actor = %{role: :employee, vehicle_ids: ["V-2"]}
+    records = [
+      %{"id" => "V-1", "fields" => %{"ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"id" => "V-2", "fields" => %{"ProjectId" => "P-2", "CityId" => "RUH"}}
+    ]
+
+    assert [%{"id" => "V-2"}] = Service.filter_vehicle_records(records, actor)
+  end
+
+  test "vehicle list filtering lets company admins read all records" do
+    records = [
+      %{"id" => "V-1", "fields" => %{"ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"id" => "V-2", "fields" => %{}}
+    ]
+
+    assert ^records = Service.filter_vehicle_records(records, %{role: :company_admin})
+  end
+
+  test "vehicle list filtering fails closed for malformed records and unknown roles" do
+    records = [
+      %{"id" => "V-1", "fields" => %{"ProjectId" => "P-1", "CityId" => "JED"}},
+      %{"id" => "V-2"}
+    ]
+
+    assert [] = Service.filter_vehicle_records(records, %{role: :unknown})
+    assert [] = Service.filter_vehicle_records(records, %{role: :maintenance_team, project_ids: ["P-1"]})
+  end
+
   test "denies create before contacting SharePoint when scope is missing" do
     actor = %{role: :maintenance_team, project_ids: ["P-1"], city_ids: ["JED"]}
 
