@@ -1,10 +1,10 @@
 defmodule FleetmsWeb.SignUpLiveTest do
-  use FleetmsWeb.ConnCase, async: true
+  use FleetmsWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Fleetms.AccountsFixtures
 
-  setup_all do
+  setup do
     Fleetms.FeatureFlags.Accounts.enable_user_registration()
     :ok
   end
